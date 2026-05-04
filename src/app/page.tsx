@@ -1,65 +1,130 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+import { NewProjectButton } from "@/app/new-project-button";
+import { SignOutForm } from "@/app/sign-out-form";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { listProjectsForUser } from "@/services/projects/projects-service";
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  if (!isSupabaseConfigured()) {
+    return (
+      <main className="flex min-h-full flex-col items-center justify-center gap-6 bg-zinc-50 px-6 py-16 dark:bg-zinc-950">
+        <div className="max-w-lg text-center">
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Editor Maestro
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            Para cuenta y proyectos en la nube, configurá{" "}
+            <code className="rounded bg-zinc-200 px-1 py-0.5 text-xs dark:bg-zinc-800">
+              NEXT_PUBLIC_SUPABASE_URL
+            </code>{" "}
+            y{" "}
+            <code className="rounded bg-zinc-200 px-1 py-0.5 text-xs dark:bg-zinc-800">
+              NEXT_PUBLIC_SUPABASE_ANON_KEY
+            </code>{" "}
+            en{" "}
+            <code className="rounded bg-zinc-200 px-1 py-0.5 text-xs dark:bg-zinc-800">
+              .env.local
+            </code>
+            , ejecutá la migración en Supabase y reiniciá el servidor.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        <Link
+          href="/editor/demo"
+          className="rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+        >
+          Abrir editor (demo local)
+        </Link>
       </main>
-    </div>
+    );
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const projects = user ? await listProjectsForUser(supabase) : [];
+
+  return (
+    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-8 px-6 py-12">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Editor Maestro
+          </h1>
+          {user?.email ? (
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {user.email}
+            </p>
+          ) : null}
+        </div>
+        <nav className="flex flex-wrap items-center gap-2">
+          {user ? (
+            <>
+              <NewProjectButton />
+              <SignOutForm />
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+              >
+                Ingresar
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-md border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600"
+              >
+                Registrarse
+              </Link>
+            </>
+          )}
+        </nav>
+      </header>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
+          Proyectos
+        </h2>
+        {!user ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Iniciá sesión para ver y crear proyectos guardados en Supabase.
+          </p>
+        ) : projects.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Todavía no hay proyectos. Creá uno con &quot;Nuevo proyecto&quot;.
+          </p>
+        ) : (
+          <ul className="divide-y divide-zinc-200 rounded-md border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+            {projects.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/editor/${p.id}`}
+                  className="flex items-center justify-between px-4 py-3 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                >
+                  <span className="max-w-[60%] truncate font-medium text-zinc-800 dark:text-zinc-100">
+                    {p.name?.trim() ? p.name : `Proyecto ${p.id.slice(0, 8)}…`}
+                  </span>
+                  <span className="text-zinc-600 dark:text-zinc-400">
+                    {new Date(p.created_at).toLocaleString("es")}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <p className="text-sm text-zinc-500 dark:text-zinc-500">
+        <Link href="/editor/demo" className="underline">
+          Editor demo (sin cuenta)
+        </Link>
+      </p>
+    </main>
   );
 }
