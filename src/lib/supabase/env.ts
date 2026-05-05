@@ -46,15 +46,33 @@ export function isSupabaseConfigured(): boolean {
   return getPublicSupabaseEnv() !== null;
 }
 
+function normalizeOrigin(raw: string): string {
+  const t = raw.replace(/\/$/, "").trim();
+  if (!t) return "";
+  if (/^https?:\/\//i.test(t)) return t;
+  return `https://${t}`;
+}
+
 /**
  * Origen público de la app (magic links, OAuth redirect, `emailRedirectTo`).
- * En producción definí NEXT_PUBLIC_SITE_URL al dominio canónico (con https).
+ *
+ * Prioridad: `NEXT_PUBLIC_SITE_URL` → URLs automáticas en Vercel (`VERCEL_PROJECT_PRODUCTION_URL`,
+ * `VERCEL_URL`) → localhost. En Vercel, si olvidás `NEXT_PUBLIC_SITE_URL` en el primer deploy,
+ * igual podemos armar un `https://…vercel.app` válido para Supabase (evita "Invalid path specified in request URL").
  */
 export function getSiteOrigin(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "").trim() ||
-    "http://localhost:3000"
+  const explicit = normalizeOrigin(
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "").trim() ?? "",
   );
+  if (explicit) return explicit;
+
+  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (prod) return normalizeOrigin(prod);
+
+  const vercel = process.env.VERCEL_URL?.trim();
+  if (vercel) return normalizeOrigin(vercel);
+
+  return "http://localhost:3000";
 }
 
 let siteUrlWarned = false;
