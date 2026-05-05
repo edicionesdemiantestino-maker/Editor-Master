@@ -11,7 +11,6 @@ import {
   isPlausiblePassword,
   parseAuthForm,
   parseSafeInternalPath,
-  safeAuthRedirectSnippet,
 } from "@/lib/auth/form-validation";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -21,15 +20,9 @@ import {
   signUpWithEmailPassword,
 } from "@/services/auth/auth-service";
 
-/** Evita propagar mensajes de error internos en query params. */
+/** TEMP (diagnóstico): mensaje completo de Supabase en query; revertir antes de prod estable. */
 function redirectAuthError(path: string, rawMessage: string): never {
-  const m = safeAuthRedirectSnippet(rawMessage, 200);
-  const sanitized =
-    /internal|database|postgres|sql|500|timeout|econn/i.test(m) ||
-    m.length > 180
-      ? "Error del servidor. Intentá más tarde."
-      : m;
-  redirect(`${path}?error=${encodeURIComponent(sanitized)}`);
+  redirect(`${path}?error=${encodeURIComponent(rawMessage)}`);
 }
 
 export async function signInAction(formData: FormData) {
