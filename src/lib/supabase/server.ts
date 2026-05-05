@@ -5,10 +5,11 @@ import { assertPublicSupabaseEnv } from "./env";
 
 export async function createServerSupabaseClient() {
   const { url, anonKey: key } = assertPublicSupabaseEnv();
-
   const cookieStore = await cookies();
-
   return createSupabaseServerClient(url, key, {
+    auth: {
+      flowType: "implicit",
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -19,7 +20,7 @@ export async function createServerSupabaseClient() {
             cookieStore.set(name, value, options),
           );
         } catch {
-          /* En RSC el refresh de tokens lo resuelve `middleware`. */
+          /* En RSC el refresh de tokens lo resuelve middleware. */
         }
       },
     },
