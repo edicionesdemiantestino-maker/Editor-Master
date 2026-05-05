@@ -34,11 +34,16 @@ export async function GET() {
   if (!sub) {
     return NextResponse.json({ subscription: null });
   }
+  if ("deleted" in sub && sub.deleted) {
+    return NextResponse.json({ subscription: null });
+  }
+
+  const currentPeriodEnd = (sub as any).current_period_end as number | undefined;
 
   return NextResponse.json({
     subscription: {
       status: sub.status,
-      currentPeriodEnd: sub.current_period_end,
+      currentPeriodEnd: currentPeriodEnd ?? 0,
     },
   });
 }

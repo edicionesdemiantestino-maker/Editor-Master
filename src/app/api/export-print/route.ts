@@ -264,6 +264,7 @@ export async function POST(req: Request) {
       auth.supabase,
       userId,
       "export-print",
+      null,
       1,
       USAGE_COST_USD["export-print"],
     );

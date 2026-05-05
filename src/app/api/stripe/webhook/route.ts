@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         const subscriptionId = session?.subscription as string | undefined;
         if (!userId || !subscriptionId) break;
 
-        const sub = await stripe.subscriptions.retrieve(subscriptionId);
-        const priceId = extractFirstItemPriceId(sub);
-        const meteredItemId = extractMeteredItemId(sub);
+        const sub = (await stripe.subscriptions.retrieve(subscriptionId)) as any;
+        const priceId = extractFirstItemPriceId(sub as any);
+        const meteredItemId = extractMeteredItemId(sub as any);
         const customerId =
           typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
 
@@ -61,8 +61,8 @@ export async function POST(req: Request) {
           stripeCustomerId: customerId,
           stripeSubscriptionId: sub.id,
           stripeStatus: sub.status,
-          currentPeriodStartSec: sub.current_period_start,
-          currentPeriodEndSec: sub.current_period_end,
+          currentPeriodStartSec: Number(sub.current_period_start ?? 0),
+          currentPeriodEndSec: Number(sub.current_period_end ?? 0),
           priceId,
           meteredItemId,
         });

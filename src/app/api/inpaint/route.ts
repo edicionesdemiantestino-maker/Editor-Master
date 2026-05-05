@@ -284,7 +284,14 @@ export async function POST(req: Request) {
 
     await setInpaintCachedResult({ ...validated.value, outputUrl: result.outputUrl });
 
-    await trackUsageEvent(auth.supabase, userId, "inpaint", 1, USAGE_COST_USD.inpaint);
+    await trackUsageEvent(
+      auth.supabase,
+      userId,
+      "inpaint",
+      null,
+      1,
+      USAGE_COST_USD.inpaint,
+    );
     await maybeReportMeteredUsage({ supabase: auth.supabase, userId, kind: "inpaint" });
 
     logStructuredLine({

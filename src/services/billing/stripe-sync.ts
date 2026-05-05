@@ -72,7 +72,9 @@ export function extractFirstItemPriceId(
 }
 
 export function extractMeteredItemId(sub: Stripe.Subscription): string | null {
-  const metered = sub.items.data.find((i) => i.price?.usage_type === "metered");
+  const metered = sub.items.data.find(
+    (i) => (i.price as any)?.usage_type === "metered",
+  );
   const id = metered?.id;
   return typeof id === "string" ? id : null;
 }

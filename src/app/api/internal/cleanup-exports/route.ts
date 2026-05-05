@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { jsonPublicError } from "@/lib/api/http-json";
@@ -32,7 +33,7 @@ type StorageListItem = {
 };
 
 async function listAllFiles(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   prefix = "",
   acc: { path: string; createdAt?: string }[] = [],
 ): Promise<{ path: string; createdAt?: string }[]> {

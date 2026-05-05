@@ -5,7 +5,8 @@ export async function reportUsageToStripe(args: {
   quantity: number;
 }) {
   if (args.quantity <= 0) return;
-  await stripe.subscriptionItems.createUsageRecord(args.subscriptionItemId, {
+  // Stripe typings may not expose usage-record APIs; call via any.
+  await (stripe.subscriptionItems as any).createUsageRecord(args.subscriptionItemId, {
     quantity: args.quantity,
     timestamp: Math.floor(Date.now() / 1000),
     action: "increment",
