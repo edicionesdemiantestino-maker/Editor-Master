@@ -24,7 +24,9 @@ export function ExportModal({ open, onClose, getCanvas }: ExportModalProps) {
   const titleId = useId();
   const descId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
-  const document = useEditorStore((s) => s.present);
+  const docTitle = useEditorStore((s) => s.present.meta.title);
+  const canvasW = useEditorStore((s) => s.present.canvas.width);
+  const canvasH = useEditorStore((s) => s.present.canvas.height);
 
   const [form, setForm] = useState<ExportFormState>(DEFAULT_EXPORT_FORM);
   const [busy, setBusy] = useState(false);
@@ -79,6 +81,7 @@ export function ExportModal({ open, onClose, getCanvas }: ExportModalProps) {
     setBusy(true);
     setError(null);
     try {
+      const document = useEditorStore.getState().present;
       await executeExportDownload({ canvas, document, form });
       onClose();
     } catch (e) {
@@ -119,8 +122,7 @@ export function ExportModal({ open, onClose, getCanvas }: ExportModalProps) {
               id={descId}
               className="mt-1 text-sm text-zinc-500 dark:text-zinc-400"
             >
-              {document.meta.title || "Sin título"} · {document.canvas.width}×
-              {document.canvas.height}px
+              {docTitle || "Sin título"} · {canvasW}×{canvasH}px
             </p>
           </div>
           <button

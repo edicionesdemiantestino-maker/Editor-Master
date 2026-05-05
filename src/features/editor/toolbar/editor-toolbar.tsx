@@ -19,12 +19,9 @@ export function EditorToolbar({
   fabricCanvasGetter,
   projectId,
 }: EditorToolbarProps) {
-  const historyRevision = useEditorStore((s) => s.historyRevision);
-  const canUndo = useEditorStore.getState().canUndo();
-  const canRedo = useEditorStore.getState().canRedo();
+  const canUndo = useEditorStore((s) => s.past.length > 0);
+  const canRedo = useEditorStore((s) => s.future.length > 0);
   const [exportOpen, setExportOpen] = useState(false);
-
-  void historyRevision;
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">

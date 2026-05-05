@@ -19,6 +19,14 @@ export type EditorHistory = {
   readonly future: readonly EditorDocument[];
 };
 
+/**
+ * Importante para performance:
+ * - Las mutaciones del store deben ser *inmutables* (sin mutar `present`).
+ * - En ese caso, el historial puede guardar referencias directas (structural sharing)
+ *   y evitar `cloneDocument()` en cada commit (reduce CPU/GC y peso de undo/redo).
+ * - Solo clonamos cuando el documento viene de "afuera" (carga inicial / replace masivo).
+ */
+
 function touchMeta(doc: EditorDocument): EditorDocument {
   return {
     ...doc,
@@ -91,7 +99,7 @@ export const useEditorStore = create<EditorState>()(
 
     addElement: (element) => {
       set((s) => ({
-        past: trimPast([...s.past, cloneDocument(s.present)], s.maxHistory),
+        past: trimPast([...s.past, s.present], s.maxHistory),
         present: touchMeta({
           ...s.present,
           canvas: {
@@ -119,7 +127,7 @@ export const useEditorStore = create<EditorState>()(
       }
 
       set((s) => ({
-        past: trimPast([...s.past, cloneDocument(s.present)], s.maxHistory),
+        past: trimPast([...s.past, s.present], s.maxHistory),
         present: nextPresent,
         future: [],
         historyRevision: s.historyRevision + 1,
@@ -131,7 +139,7 @@ export const useEditorStore = create<EditorState>()(
         if (!s.present.canvas.elements.some((e) => e.id === id)) return s;
         const nextPresent = touchMeta(removeElementFromDocument(s.present, id));
         return {
-          past: trimPast([...s.past, cloneDocument(s.present)], s.maxHistory),
+          past: trimPast([...s.past, s.present], s.maxHistory),
           present: nextPresent,
           future: [],
           selectedIds: s.selectedIds.filter((x) => x !== id),
@@ -141,13 +149,15 @@ export const useEditorStore = create<EditorState>()(
     },
 
     replacePresent: (next, mode) => {
+      // replacePresent puede recibir un doc "externo" (carga/sync masivo) que no
+      // necesariamente garantiza inmutabilidad. Clonamos una vez aquí.
       const frozen = cloneDocument(next);
       if (mode === "transient") {
         set({ present: touchMeta(frozen) });
         return;
       }
       set((s) => ({
-        past: trimPast([...s.past, cloneDocument(s.present)], s.maxHistory),
+        past: trimPast([...s.past, s.present], s.maxHistory),
         present: touchMeta(frozen),
         future: [],
         historyRevision: s.historyRevision + 1,
@@ -162,8 +172,8 @@ export const useEditorStore = create<EditorState>()(
         if (s.past.length === 0) return s;
         const previous = s.past[s.past.length - 1]!;
         const newPast = s.past.slice(0, -1);
-        const newFuture = [cloneDocument(s.present), ...s.future];
-        const nextPresent = cloneDocument(previous);
+        const newFuture = [s.present, ...s.future];
+        const nextPresent = previous;
         return {
           past: newPast,
           present: nextPresent,
@@ -180,8 +190,8 @@ export const useEditorStore = create<EditorState>()(
       set((s) => {
         if (s.future.length === 0) return s;
         const [next, ...restFuture] = s.future;
-        const newPast = [...s.past, cloneDocument(s.present)];
-        const nextPresent = cloneDocument(next);
+        const newPast = [...s.past, s.present];
+        const nextPresent = next!;
         return {
           past: newPast,
           present: nextPresent,
@@ -207,7 +217,7 @@ export const useEditorStore = create<EditorState>()(
 
     pushHistoryAnchor: () =>
       set((s) => ({
-        past: trimPast([...s.past, cloneDocument(s.present)], s.maxHistory),
+        past: trimPast([...s.past, s.present], s.maxHistory),
         future: [],
         historyRevision: s.historyRevision + 1,
       })),
@@ -230,6 +240,7 @@ export function resetEditorForProject(projectId: string) {
 export function loadEditorDocument(doc: EditorDocument) {
   useEditorStore.setState((s) => ({
     past: [],
+    // Documento externo: clonamos para evitar mutación accidental desde referencias compartidas.
     present: cloneDocument(doc),
     future: [],
     selectedIds: [],

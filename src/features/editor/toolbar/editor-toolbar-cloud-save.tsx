@@ -8,6 +8,7 @@ import {
 } from "@/features/editor/persistence/editor-persistence-context";
 
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { useUsageSummary } from "@/features/billing/use-usage-summary";
 
 type EditorToolbarCloudSaveProps = {
   projectId: string;
@@ -33,6 +34,7 @@ export function EditorToolbarCloudSave({ projectId }: EditorToolbarCloudSaveProp
     useEditorPersistenceActions();
   const { saveStatus, saveErrorMessage, lastSavedAt } =
     useEditorPersistenceStatus();
+  const { data } = useUsageSummary();
 
   const isRemoteProject = projectId !== "demo";
   const saveLocked = saveStatus === "saving";
@@ -106,6 +108,11 @@ export function EditorToolbarCloudSave({ projectId }: EditorToolbarCloudSaveProp
         {saveLocked ? "Guardando…" : "Guardar"}
       </button>
       {statusNode}
+      {data?.usage?.inpaint ? (
+        <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
+          {data.usage.inpaint.used}/{data.usage.inpaint.limit} usos
+        </span>
+      ) : null}
       {showCloudHint ? (
         <span className="text-xs text-zinc-500 dark:text-zinc-400">
           Autosave al cargar el proyecto…

@@ -3,10 +3,14 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { jsonPublicError } from "@/lib/api/http-json";
+import { redactDataUrl } from "@/lib/api/data-url";
 import { logStructuredLine } from "@/lib/observability/structured-log";
 import { reportServerException } from "@/lib/observability/server-reporting";
 import { rateLimitService } from "@/lib/rate-limit/rate-limit-service";
 import { requireServerUser } from "@/lib/supabase/require-server-user";
+import { timeoutSignal } from "@/lib/async/timeout";
+import { queueService } from "@/services/queue/queue-service";
+import { USAGE_COST_USD } from "@/lib/billing/usage-costs";
 import {
   createReplicateSdInpaintProvider,
   isReplicateInpaintConfigured,
@@ -18,12 +22,27 @@ import {
 
 import { INPAINT_MAX_BODY_BYTES } from "./constants";
 import { validateInpaintJsonBody } from "./validate-inpaint-body";
+import { getInpaintCachedResult, setInpaintCachedResult } from "@/services/inpaint/inpaint-result-cache";
+import { trackUsageEvent } from "@/services/usage/usage-service";
+import { checkUsageLimit } from "@/services/billing/check-usage-limit";
+import { maybeReportMeteredUsage } from "@/services/billing/metered-usage-billing";
 
 export const maxDuration = 120;
 /** image-size y Buffer requieren Node (no Edge). */
 export const runtime = "nodejs";
 
 const inpaintSlots = rateLimitService.inpaintSlots();
+
+function sanitizeErrorDetail(e: unknown): string {
+  if (!(e instanceof Error)) return "unknown_error";
+  const msg = e.message.slice(0, 500);
+  // Redact any embedded data URLs defensively.
+  // (Some upstream libs may embed inputs in errors.)
+  if (msg.includes("data:image/")) {
+    return msg.replace(/data:image\/[^,]+,[A-Za-z0-9+/=\s]+/g, (m) => redactDataUrl(m));
+  }
+  return msg;
+}
 
 export async function POST(req: Request) {
   const requestId = randomUUID();
@@ -68,6 +87,21 @@ export async function POST(req: Request) {
       "warn",
     );
     return jsonPublicError(requestId, 413, "payload_too_large");
+  }
+
+  const ct = req.headers.get("content-type") ?? "";
+  if (!ct.toLowerCase().includes("application/json")) {
+    logStructuredLine(
+      {
+        service: "api/inpaint",
+        requestId,
+        event: "unsupported_content_type",
+        httpStatus: 415,
+        code: ct.slice(0, 80),
+      },
+      "warn",
+    );
+    return jsonPublicError(requestId, 415, "content_type_must_be_json");
   }
 
   const auth = await requireServerUser();
@@ -158,6 +192,47 @@ export async function POST(req: Request) {
     );
   }
 
+  // Cache (P1): avoid reprocessing identical requests.
+  const cacheHit = await getInpaintCachedResult(validated.value);
+  if (cacheHit.hit) {
+    logStructuredLine({
+      service: "api/inpaint",
+      requestId,
+      userId,
+      event: "cache_hit",
+      httpStatus: 200,
+    });
+    return NextResponse.json(
+      { outputUrl: cacheHit.outputUrl, requestId, cached: true },
+      { headers: { "X-Request-Id": requestId } },
+    );
+  }
+
+  // Async queue (P0): opt-in to keep compatibility.
+  const url = new URL(req.url);
+  const asyncMode =
+    url.searchParams.get("async") === "1" ||
+    (req.headers.get("prefer") ?? "").toLowerCase().includes("respond-async");
+  if (asyncMode) {
+    const jobId = await queueService.enqueue({
+      kind: "inpaint",
+      userId,
+      payload: validated.value,
+    });
+    logStructuredLine({
+      service: "api/inpaint",
+      requestId,
+      userId,
+      event: "job_enqueued",
+      httpStatus: 202,
+      code: jobId,
+    });
+    return NextResponse.json(
+      { jobId, requestId },
+      { status: 202, headers: { "X-Request-Id": requestId } },
+    );
+  }
+
   if (!(await inpaintSlots.tryAcquire(userId))) {
     logStructuredLine(
       {
@@ -173,6 +248,20 @@ export async function POST(req: Request) {
   }
 
   try {
+    const quota = await checkUsageLimit(auth.supabase, "inpaint");
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: "quota_exceeded",
+          used: quota.used,
+          limit: quota.limit,
+          planId: quota.planId,
+          requestId,
+        },
+        { status: 429, headers: { "X-Request-Id": requestId } },
+      );
+    }
+
     const token = getReplicateApiToken()!;
     const version = getReplicateInpaintVersion()!;
     const provider = createReplicateSdInpaintProvider({ token, version });
@@ -184,17 +273,35 @@ export async function POST(req: Request) {
       event: "replicate_invoke_start",
     });
 
-    const result = await provider.run({
-      imageDataUrl: validated.value.imageDataUrl,
-      maskDataUrl: validated.value.maskDataUrl,
-      prompt: validated.value.prompt,
-    });
+    const result = await Promise.race([
+      provider.run({
+        imageDataUrl: validated.value.imageDataUrl,
+        maskDataUrl: validated.value.maskDataUrl,
+        prompt: validated.value.prompt,
+      }),
+      timeoutSignal({ ms: 30_000, code: "provider_timeout" }),
+    ]);
+
+    await setInpaintCachedResult({ ...validated.value, outputUrl: result.outputUrl });
+
+    await trackUsageEvent(auth.supabase, userId, "inpaint", 1, USAGE_COST_USD.inpaint);
+    await maybeReportMeteredUsage({ supabase: auth.supabase, userId, kind: "inpaint" });
 
     logStructuredLine({
       service: "api/inpaint",
       requestId,
       userId,
       event: "replicate_invoke_ok",
+      durationMs: Date.now() - t0,
+      httpStatus: 200,
+    });
+
+    logStructuredLine({
+      service: "api/inpaint",
+      requestId,
+      userId,
+      event: "cost_event",
+      code: "inpaint",
       durationMs: Date.now() - t0,
       httpStatus: 200,
     });
@@ -207,8 +314,7 @@ export async function POST(req: Request) {
       { headers: { "X-Request-Id": requestId } },
     );
   } catch (e) {
-    const internal =
-      e instanceof Error ? e.message.slice(0, 500) : "unknown_error";
+    const internal = sanitizeErrorDetail(e);
     logStructuredLine(
       {
         service: "api/inpaint",
@@ -217,7 +323,9 @@ export async function POST(req: Request) {
         event: "replicate_invoke_error",
         durationMs: Date.now() - t0,
         httpStatus: 502,
-        code: "provider_error",
+        code: e instanceof Error && e.message === "provider_timeout"
+          ? "provider_timeout"
+          : "provider_error",
       },
       "error",
     );
@@ -236,7 +344,13 @@ export async function POST(req: Request) {
       { segment: "api/inpaint", requestId, userId },
       e,
     );
-    return jsonPublicError(requestId, 502, "provider_unavailable");
+    return jsonPublicError(
+      requestId,
+      e instanceof Error && e.message === "provider_timeout" ? 504 : 502,
+      e instanceof Error && e.message === "provider_timeout"
+        ? "provider_timeout"
+        : "provider_unavailable",
+    );
   } finally {
     await inpaintSlots.release(userId);
   }

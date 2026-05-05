@@ -25,3 +25,7 @@ export async function createServerSupabaseClient() {
     },
   });
 }
+
+// Alias legacy (para rutas API que esperan este nombre).
+export const createServerClient = createServerSupabaseClient;
+export const createClient = createServerSupabaseClient;

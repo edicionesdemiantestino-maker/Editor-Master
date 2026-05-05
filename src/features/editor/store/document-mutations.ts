@@ -40,17 +40,19 @@ export function updateElementInDocument(
   id: ElementId,
   patch: Partial<CanvasElement>,
 ): EditorDocument {
-  const elements = doc.canvas.elements.map((el) => {
-    if (el.id !== id) return el;
-    const merged = { ...el, ...patch } as CanvasElement;
-    if (isTextElement(merged)) {
-      return normalizeTextElement(merged);
-    }
-    if (isImageElement(merged)) {
-      return normalizeImageElement(merged);
-    }
-    return merged;
-  });
+  const idx = doc.canvas.elements.findIndex((el) => el.id === id);
+  if (idx === -1) return doc;
+
+  const prev = doc.canvas.elements[idx]!;
+  const merged = { ...prev, ...patch } as CanvasElement;
+  const nextEl = isTextElement(merged)
+    ? normalizeTextElement(merged)
+    : isImageElement(merged)
+      ? normalizeImageElement(merged)
+      : merged;
+
+  const elements = doc.canvas.elements.slice();
+  elements[idx] = nextEl;
   return {
     ...doc,
     canvas: { ...doc.canvas, elements },

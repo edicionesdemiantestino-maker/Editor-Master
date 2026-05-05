@@ -10,6 +10,7 @@ import {
   mergePresentWithFabricSnapshot,
 } from "./serialize-document";
 import { useEditorStore } from "../store/editor-store";
+import { fnv1a32 } from "@/lib/hash/fnv1a";
 
 export type EditorSaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -19,8 +20,9 @@ export type EditorAutosaveState = {
   lastSavedAt: number | null;
 };
 
-const DEFAULT_DEBOUNCE_MS = 2200;
+const DEFAULT_DEBOUNCE_MS = 1500;
 const SAVED_UI_RESET_MS = 1600;
+const RETRY_DELAY_MS = 500;
 
 type UseEditorAutosaveArgs = {
   projectId: string;
@@ -97,7 +99,8 @@ export function useEditorAutosave({
     const present = useEditorStore.getState().present;
     const fabricSnap = getFabricSnapshotRef.current?.() ?? null;
     const payload = mergePresentWithFabricSnapshot(present, fabricSnap);
-    const fp = fingerprintPersistablePayload(present, fabricSnap);
+    const fpJson = fingerprintPersistablePayload(present, fabricSnap);
+    const fp = fnv1a32(fpJson);
     if (fp === lastSavedFingerprintRef.current) {
       return { ok: true };
     }
@@ -109,7 +112,12 @@ export function useEditorAutosave({
     });
     clearSavedUiTimer();
 
-    const result = await saveProjectAction(projectIdRef.current, payload);
+    let result = await saveProjectAction(projectIdRef.current, payload);
+    if (!result.ok) {
+      // Retry 1 vez (sin paralelismo; mantiene la cola serial).
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      result = await saveProjectAction(projectIdRef.current, payload);
+    }
     if (result.ok) {
       lastSavedFingerprintRef.current = fp;
       const at = Date.now();
@@ -161,9 +169,8 @@ export function useEditorAutosave({
     }
 
     const fabricSnapBoot = getFabricSnapshotRef.current?.() ?? null;
-    lastSavedFingerprintRef.current = fingerprintPersistablePayload(
-      useEditorStore.getState().present,
-      fabricSnapBoot,
+    lastSavedFingerprintRef.current = fnv1a32(
+      fingerprintPersistablePayload(useEditorStore.getState().present, fabricSnapBoot),
     );
 
     const schedule = () => {

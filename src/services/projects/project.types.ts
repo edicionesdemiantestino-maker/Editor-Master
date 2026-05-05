@@ -8,6 +8,7 @@ export type ProjectRow = {
   data: EditorDocument;
   created_at: string;
   updated_at: string;
+  last_opened_at: string | null;
 };
 
 export type ProjectSummary = Pick<

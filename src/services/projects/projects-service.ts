@@ -32,7 +32,7 @@ export async function getProjectById(
 ): Promise<ProjectRow | null> {
   const { data, error } = await supabase
     .from("projects")
-    .select("id, user_id, name, data, created_at, updated_at")
+    .select("id, user_id, name, data, created_at, updated_at, last_opened_at")
     .eq("id", projectId)
     .maybeSingle();
 
@@ -49,7 +49,23 @@ export async function getProjectById(
     created_at: row.created_at,
     updated_at:
       typeof row.updated_at === "string" ? row.updated_at : row.created_at,
+    last_opened_at:
+      typeof row.last_opened_at === "string" ? row.last_opened_at : null,
   };
+}
+
+/**
+ * Auditoría suave: marca "última apertura" (best-effort; bajo RLS).
+ */
+export async function touchProjectLastOpened(
+  supabase: SupabaseClient,
+  projectId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("projects")
+    .update({ last_opened_at: new Date().toISOString() })
+    .eq("id", projectId);
+  if (error) throw error;
 }
 
 /**

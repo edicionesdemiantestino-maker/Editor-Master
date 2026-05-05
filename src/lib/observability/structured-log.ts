@@ -10,6 +10,7 @@ export type StructuredLogService =
   | "api/inpaint"
   | "api/image-proxy"
   | "api/export-print"
+  | "api/internal/cleanup-exports"
   | "route/auth-callback"
   | "actions/projects"
   | "actions/auth"

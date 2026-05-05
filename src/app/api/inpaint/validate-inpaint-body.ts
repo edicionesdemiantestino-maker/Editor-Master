@@ -4,6 +4,7 @@ import {
   INPAINT_MAX_EDGE_PX,
   INPAINT_MAX_PROMPT_LENGTH,
 } from "./constants";
+import { decodeBase64DataUrlToBuffer } from "@/lib/api/data-url";
 
 export type InpaintValidatedPayload = {
   imageDataUrl: string;
@@ -37,15 +38,7 @@ export function isAllowedImageDataUrl(v: unknown): v is string {
   );
 }
 
-function decodeBase64FromDataUrl(dataUrl: string): Buffer {
-  const comma = dataUrl.indexOf(",");
-  if (comma === -1) {
-    throw new Error("invalid_data_url");
-  }
-  const b64 = dataUrl.slice(comma + 1).replace(/\s/g, "");
-  if (!b64) throw new Error("empty_payload");
-  return Buffer.from(b64, "base64");
-}
+const INPAINT_MAX_IMAGE_DECODED_BYTES = 3 * 1024 * 1024;
 
 function measureImage(buffer: Buffer): { width: number; height: number } {
   try {
@@ -95,8 +88,12 @@ export function validateInpaintJsonBody(body: unknown): InpaintValidationResult 
   }
 
   try {
-    const imgBuf = decodeBase64FromDataUrl(imageDataUrl);
-    const maskBuf = decodeBase64FromDataUrl(maskDataUrl);
+    const imgBuf = decodeBase64DataUrlToBuffer(imageDataUrl, {
+      maxDecodedBytes: INPAINT_MAX_IMAGE_DECODED_BYTES,
+    });
+    const maskBuf = decodeBase64DataUrlToBuffer(maskDataUrl, {
+      maxDecodedBytes: INPAINT_MAX_IMAGE_DECODED_BYTES,
+    });
     const imgDim = measureImage(imgBuf);
     const maskDim = measureImage(maskBuf);
     assertMaxEdge(imgDim.width, imgDim.height);
@@ -120,6 +117,8 @@ export function validateInpaintJsonBody(body: unknown): InpaintValidationResult 
       invalid_image: { status: 400, public: "invalid_image_binary" },
       invalid_data_url: { status: 400, public: "invalid_image_data_url" },
       empty_payload: { status: 400, public: "empty_image_payload" },
+      invalid_base64: { status: 400, public: "invalid_image_data_url" },
+      payload_too_large: { status: 413, public: "payload_too_large" },
       unknown_dimensions: { status: 400, public: "invalid_image_binary" },
       dimensions_too_large: { status: 400, public: "dimensions_exceed_limit" },
       dimensions_too_small: { status: 400, public: "dimensions_below_minimum" },

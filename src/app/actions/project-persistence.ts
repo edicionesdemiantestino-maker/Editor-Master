@@ -21,6 +21,7 @@ import { hydrateEditorDocument } from "@/features/editor/store/document-mutation
 import {
   getProjectById,
   saveProjectDocument,
+  touchProjectLastOpened,
 } from "@/services/projects/projects-service";
 
 const UUID_RE =
@@ -193,6 +194,12 @@ export async function getProjectAction(
     }
 
     const document = sanitizeSerializableDocument(row.data);
+    // Best-effort: auditoría, sin bloquear apertura.
+    try {
+      await touchProjectLastOpened(auth.supabase, projectId);
+    } catch {
+      // ignore
+    }
 
     logStructuredLine(
       {

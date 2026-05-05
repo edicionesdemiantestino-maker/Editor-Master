@@ -5,6 +5,7 @@ import {
   EXPORT_PRINT_TARGET_DPI_MAX,
   EXPORT_PRINT_TARGET_DPI_MIN,
 } from "./constants";
+import { decodeBase64DataUrlToBuffer } from "@/lib/api/data-url";
 
 export type ExportPrintValidated = {
   imageDataUrl: string;
@@ -39,11 +40,10 @@ function isAllowedDataUrl(v: unknown): v is string {
 }
 
 function decodeBase64FromDataUrl(dataUrl: string): Buffer {
-  const comma = dataUrl.indexOf(",");
-  if (comma === -1) throw new Error("invalid_data_url");
-  const b64 = dataUrl.slice(comma + 1).replace(/\s/g, "");
-  if (!b64) throw new Error("empty_payload");
-  return Buffer.from(b64, "base64");
+  return decodeBase64DataUrlToBuffer(dataUrl, {
+    // Deja margen para JSON + headers; el body total está limitado en route.ts.
+    maxDecodedBytes: 24 * 1024 * 1024,
+  });
 }
 
 export function validateExportPrintBody(body: unknown): ExportPrintValidationResult {
@@ -84,8 +84,17 @@ export function validateExportPrintBody(body: unknown): ExportPrintValidationRes
     if (mp > 120_000_000) {
       return { ok: false, httpStatus: 400, publicCode: "raster_too_many_pixels" };
     }
-  } catch {
-    return { ok: false, httpStatus: 400, publicCode: "invalid_image_binary" };
+  } catch (e) {
+    const code = e instanceof Error ? e.message : "invalid_image";
+    const map: Record<string, { status: number; public: string }> = {
+      invalid_data_url: { status: 400, public: "invalid_image_data_url" },
+      invalid_base64: { status: 400, public: "invalid_image_data_url" },
+      empty_payload: { status: 400, public: "empty_image_payload" },
+      payload_too_large: { status: 413, public: "payload_too_large" },
+      invalid_image: { status: 400, public: "invalid_image_binary" },
+    };
+    const m = map[code] ?? { status: 400, public: "invalid_image_binary" };
+    return { ok: false, httpStatus: m.status, publicCode: m.public };
   }
 
   return {
