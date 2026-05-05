@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getSiteOrigin } from "@/lib/supabase/env";
+import { getEmailRedirectOrigin } from "@/lib/supabase/email-redirect-origin";
 
 export async function signInWithEmailPassword(
   supabase: SupabaseClient,
@@ -15,7 +15,8 @@ export async function signUpWithEmailPassword(
   email: string,
   password: string,
 ) {
-  const emailRedirectTo = new URL("/auth/callback", getSiteOrigin()).href;
+  const origin = await getEmailRedirectOrigin();
+  const emailRedirectTo = new URL("/auth/callback", origin).href;
   return supabase.auth.signUp({
     email,
     password,
