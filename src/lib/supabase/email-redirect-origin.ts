@@ -3,6 +3,21 @@ import { headers } from "next/headers";
 import { getSiteOrigin } from "./env";
 
 /**
+ * Override opcional (solo origen): mismo valor que querés permitir en Supabase Redirect URLs.
+ * Ej.: `https://editor-master.vercel.app` — útil si previews y SITE_URL chocan con GoTrue.
+ */
+function parseOriginOverride(raw: string): string | null {
+  const t = raw.trim().replace(/\/$/, "");
+  if (!t) return null;
+  try {
+    const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
+    return new URL(withProto).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Origen para `emailRedirectTo` en registro / magic link.
  * Usa el host **real** del request (preview `*.vercel.app`, dominio custom, localhost)
  * si es seguro; si no, cae en `getSiteOrigin()` (NEXT_PUBLIC_SITE_URL / Vercel env).
@@ -26,6 +41,12 @@ function buildOrigin(proto: string, host: string): string {
 }
 
 export async function getEmailRedirectOrigin(): Promise<string> {
+  const envOverride = process.env.NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN?.trim();
+  if (envOverride) {
+    const o = parseOriginOverride(envOverride);
+    if (o) return o;
+  }
+
   const fallback = getSiteOrigin();
   let canonicalHost: string;
   try {
