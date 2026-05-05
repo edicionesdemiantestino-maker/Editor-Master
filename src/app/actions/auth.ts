@@ -14,11 +14,7 @@ import {
 } from "@/lib/auth/form-validation";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import {
-  signInWithEmailPassword,
-  signOut,
-  signUpWithEmailPassword,
-} from "@/services/auth/auth-service";
+import { signOut, signUpWithEmailPassword } from "@/services/auth/auth-service";
 
 /** TEMP (diagnóstico): mensaje completo de Supabase en query; revertir antes de prod estable. */
 function redirectAuthError(path: string, rawMessage: string): never {
@@ -60,7 +56,10 @@ export async function signInAction(formData: FormData) {
   }
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await signInWithEmailPassword(supabase, email, password);
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
   if (error) {
     logStructuredLine(
       {
@@ -72,10 +71,9 @@ export async function signInAction(formData: FormData) {
       },
       "warn",
     );
-    redirectAuthError("/login", error.message);
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
-  // Forzar que las cookies de sesión se escriban (implicit + Server Action).
-  await supabase.auth.getSession();
+  await supabase.auth.getUser();
   revalidatePath("/", "layout");
   const nextPath = parseSafeInternalPath(formData.get("next"));
   redirect(nextPath);

@@ -17,9 +17,6 @@ export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(url, anonKey, {
-    auth: {
-      flowType: "implicit",
-    },
     cookies: {
       getAll() {
         return request.cookies.getAll();

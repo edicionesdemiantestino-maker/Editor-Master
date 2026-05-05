@@ -7,9 +7,6 @@ export async function createServerSupabaseClient() {
   const { url, anonKey: key } = assertPublicSupabaseEnv();
   const cookieStore = await cookies();
   return createSupabaseServerClient(url, key, {
-    auth: {
-      flowType: "implicit",
-    },
     cookies: {
       getAll() {
         return cookieStore.getAll();
