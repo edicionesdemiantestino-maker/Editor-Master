@@ -120,8 +120,7 @@ export async function signUpAction(formData: FormData) {
     );
   }
 
-  const supabase = await createServerSupabaseClient();
-  const { error } = await signUpWithEmailPassword(supabase, email, password);
+  const { error } = await signUpWithEmailPassword(email, password);
   if (error) {
     logStructuredLine(
       {
