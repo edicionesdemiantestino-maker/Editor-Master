@@ -73,6 +73,11 @@ export async function signInAction(formData: FormData) {
     );
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("LOGIN OK, writing cookies");
+  }
+
   await supabase.auth.getUser();
   revalidatePath("/", "layout");
   const nextPath = parseSafeInternalPath(formData.get("next"));
