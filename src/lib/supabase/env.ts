@@ -46,31 +46,48 @@ export function isSupabaseConfigured(): boolean {
   return getPublicSupabaseEnv() !== null;
 }
 
-function normalizeOrigin(raw: string): string {
-  const t = raw.replace(/\/$/, "").trim();
-  if (!t) return "";
-  if (/^https?:\/\//i.test(t)) return t;
-  return `https://${t}`;
+/**
+ * Devuelve solo el origen (`https://host[:puerto]`), sin path.
+ * Así `emailRedirectTo` queda `origin/auth/callback` y nunca `…/callback/auth/callback`
+ * (Supabase: "Invalid path specified in request URL").
+ */
+function toPublicOrigin(raw: string): string | null {
+  const t = raw.trim().replace(/\/$/, "");
+  if (!t) return null;
+  try {
+    const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
+    return new URL(withProto).origin;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Origen público de la app (magic links, OAuth redirect, `emailRedirectTo`).
  *
  * Prioridad: `NEXT_PUBLIC_SITE_URL` → URLs automáticas en Vercel (`VERCEL_PROJECT_PRODUCTION_URL`,
- * `VERCEL_URL`) → localhost. En Vercel, si olvidás `NEXT_PUBLIC_SITE_URL` en el primer deploy,
- * igual podemos armar un `https://…vercel.app` válido para Supabase (evita "Invalid path specified in request URL").
+ * `VERCEL_URL`) → localhost. Solo el **origen** (sin `/ruta`); en Vercel se puede omitir
+ * `NEXT_PUBLIC_SITE_URL` y usar `VERCEL_URL`.
  */
 export function getSiteOrigin(): string {
-  const explicit = normalizeOrigin(
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "").trim() ?? "",
-  );
-  if (explicit) return explicit;
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) {
+    const o = toPublicOrigin(explicit);
+    if (o) return o;
+  }
 
   const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
-  if (prod) return normalizeOrigin(prod);
+  if (prod) {
+    const o = toPublicOrigin(prod);
+    if (o) return o;
+  }
 
   const vercel = process.env.VERCEL_URL?.trim();
-  if (vercel) return normalizeOrigin(vercel);
+  if (vercel) {
+    const host = vercel.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const o = toPublicOrigin(host.startsWith("http") ? host : `https://${host}`);
+    if (o) return o;
+  }
 
   return "http://localhost:3000";
 }

@@ -15,7 +15,7 @@ export async function signUpWithEmailPassword(
   email: string,
   password: string,
 ) {
-  const emailRedirectTo = `${getSiteOrigin()}/auth/callback`;
+  const emailRedirectTo = new URL("/auth/callback", getSiteOrigin()).href;
   return supabase.auth.signUp({
     email,
     password,
