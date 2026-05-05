@@ -74,6 +74,8 @@ export async function signInAction(formData: FormData) {
     );
     redirectAuthError("/login", error.message);
   }
+  // Forzar que las cookies de sesión se escriban (implicit + Server Action).
+  await supabase.auth.getSession();
   revalidatePath("/", "layout");
   const nextPath = parseSafeInternalPath(formData.get("next"));
   redirect(nextPath);
