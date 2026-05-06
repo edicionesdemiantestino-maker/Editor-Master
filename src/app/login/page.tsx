@@ -7,9 +7,17 @@ type LoginPageProps = {
   searchParams: Promise<{ error?: string; message?: string; next?: string }>;
 };
 
+const LOGIN_ERRORS: Record<string, string> = {
+  auth_failed: "No pudimos validar el email o la contraseña.",
+  session_failed:
+    "No se pudo confirmar la sesión en el servidor. Revisá cookies, dominio o probá de nuevo.",
+};
+
 const LOGIN_MESSAGES: Record<string, string> = {
   "confirm-email":
     "Si tu proyecto Supabase exige confirmación, revisá tu correo y luego ingresá acá.",
+  check_email_or_login:
+    "Si tu cuenta requiere confirmación, revisá el email. Después podés entrar con tu contraseña.",
   required: "Iniciá sesión para continuar.",
 };
 
@@ -55,7 +63,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           />
         </label>
         {q.error ? (
-          <p className="text-sm text-red-600 dark:text-red-400">{q.error}</p>
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {LOGIN_ERRORS[q.error] ?? q.error}
+          </p>
         ) : null}
         {infoMessage ? (
           <p className="text-sm text-emerald-700 dark:text-emerald-400">

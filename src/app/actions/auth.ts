@@ -16,11 +16,16 @@ export async function signInAction(formData: FormData) {
   });
 
   if (error) {
-    console.error("LOGIN ERROR:", error.message);
+    console.error("LOGIN ERROR FULL:", JSON.stringify(error, null, 2));
     redirect("/login?error=auth_failed");
   }
 
-  await supabase.auth.getUser();
+  const { data: userData } = await supabase.auth.getUser();
+
+  if (!userData?.user) {
+    console.error("NO USER AFTER LOGIN");
+    redirect("/login?error=session_failed");
+  }
 
   redirect("/");
 }
@@ -37,11 +42,11 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error) {
-    console.error("SIGNUP ERROR:", error.message);
+    console.error("SIGNUP ERROR:", error);
     redirect("/login?error=auth_failed");
   }
 
-  redirect("/login");
+  redirect("/login?message=check_email_or_login");
 }
 
 export async function signOutAction() {
