@@ -6,7 +6,7 @@ export async function requireUser() {
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase.auth.getUser();
 
-  if (!data.user) {
+  if (!data?.user) {
     redirect("/login");
   }
 
