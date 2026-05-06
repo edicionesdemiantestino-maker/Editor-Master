@@ -11,6 +11,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { EditorCanvas } from "./canvas/editor-canvas";
 import { useFontPreload } from "./fonts/use-font-preload";
 import { MagicErasePanel } from "./magic-erase/magic-erase-panel";
+import { BrandKitPanel } from "./brand/brand-kit-panel";
 import { LayersPanel } from "./layers/layers-panel";
 import { TextInspectorPanel } from "./text/text-inspector-panel";
 import { EditorPersistenceProvider } from "./persistence/editor-persistence-context";
@@ -144,6 +145,7 @@ export function EditorShell({ projectId, initialDocument }: EditorShellProps) {
           <aside className="flex w-72 shrink-0 flex-col border-l border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
             <MagicErasePanel getCanvas={() => fabricCanvasRef.current} />
             <TextInspectorPanel />
+            <BrandKitPanel />
             <LayersPanel />
           </aside>
         </div>

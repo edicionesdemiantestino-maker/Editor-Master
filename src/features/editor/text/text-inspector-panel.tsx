@@ -6,6 +6,7 @@ import type { TextElement } from "@/entities/editor/document-schema";
 import { isTextElement } from "@/entities/editor/element-guards";
 import { pickTextTypography } from "@/entities/editor/text-typography";
 
+import { useBrandKit } from "../brand/use-brand-kit";
 import { GOOGLE_FONT_OPTIONS } from "../fonts/google-fonts-catalog";
 import { ensureFontLoaded } from "../fonts/font-manager";
 import { useEditorStore } from "../store/editor-store";
@@ -20,6 +21,7 @@ export function TextInspectorPanel() {
   const present = useEditorStore((s) => s.present);
   const selectedIds = useEditorStore((s) => s.selectedIds);
   const historyRevision = useEditorStore((s) => s.historyRevision);
+  const { kit } = useBrandKit();
 
   const selectedText = useMemo(() => {
     void historyRevision;
@@ -208,6 +210,20 @@ export function TextInspectorPanel() {
             value={normalizeHex(typo.fill)}
             onChange={(e) => commitTypography({ fill: e.target.value })}
           />
+          {kit?.brand_colors?.length ? (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {kit.brand_colors.map((c: any) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="h-6 w-6 rounded border border-zinc-300 dark:border-zinc-600"
+                  style={{ background: c.hex }}
+                  onClick={() => commitTypography({ fill: c.hex })}
+                  title={c.hex}
+                />
+              ))}
+            </div>
+          ) : null}
         </label>
 
         <div className="flex flex-col gap-1">
