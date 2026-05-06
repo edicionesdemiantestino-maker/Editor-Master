@@ -59,7 +59,7 @@ export function LoginForm() {
     }
 
     router.refresh();
-    router.push(nextPath ?? "/");
+    router.push(nextPath ?? "/dashboard/projects");
     setLoading(false);
   }
 
