@@ -7,7 +7,7 @@ import { isTextElement } from "@/entities/editor/element-guards";
 import { pickTextTypography } from "@/entities/editor/text-typography";
 
 import { GOOGLE_FONT_OPTIONS } from "../fonts/google-fonts-catalog";
-import { loadGoogleFontFamily } from "../fonts/google-font-loader";
+import { ensureFontLoaded } from "../fonts/font-manager";
 import { useEditorStore } from "../store/editor-store";
 
 const SYSTEM_UI_VALUE = "__SYSTEM_UI__";
@@ -85,10 +85,16 @@ export function TextInspectorPanel() {
         });
         return;
       }
-      await loadGoogleFontFamily(value);
-      commitTypography({ fontSource: "google", fontFamily: value });
+      const font = GOOGLE_FONT_OPTIONS.find((f) => f.family === value);
+      if (font) {
+        await ensureFontLoaded(font.family, [...font.weights]);
+      }
+      commitTypography({
+        fontSource: "google",
+        fontFamily: value,
+      });
     } catch (e) {
-      console.error(e);
+      console.error("FONT LOAD ERROR", e);
     }
   };
 
@@ -135,7 +141,11 @@ export function TextInspectorPanel() {
           >
             <option value={SYSTEM_UI_VALUE}>Sistema (UI)</option>
             {GOOGLE_FONT_OPTIONS.map((o) => (
-              <option key={o.family} value={o.family}>
+              <option
+                key={o.family}
+                value={o.family}
+                style={{ fontFamily: o.family }}
+              >
                 {o.label}
               </option>
             ))}

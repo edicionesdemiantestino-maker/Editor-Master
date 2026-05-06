@@ -9,7 +9,7 @@ import { getProjectAction } from "@/app/actions/project-persistence";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 import { EditorCanvas } from "./canvas/editor-canvas";
-import { loadGoogleFontFamily } from "./fonts/google-font-loader";
+import { useFontPreload } from "./fonts/use-font-preload";
 import { MagicErasePanel } from "./magic-erase/magic-erase-panel";
 import { LayersPanel } from "./layers/layers-panel";
 import { TextInspectorPanel } from "./text/text-inspector-panel";
@@ -30,6 +30,7 @@ export function EditorShell({ projectId, initialDocument }: EditorShellProps) {
   const fabricCanvasRef = useRef<Canvas | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadPending, setLoadPending] = useState(projectId !== "demo");
+  useFontPreload();
 
   useEffect(() => {
     if (projectId === "demo") {
@@ -95,10 +96,6 @@ export function EditorShell({ projectId, initialDocument }: EditorShellProps) {
       cancelled = true;
     };
   }, [projectId, initialDocument]);
-
-  useEffect(() => {
-    void loadGoogleFontFamily("Inter");
-  }, []);
 
   const persistenceReady = !loadPending && !loadError;
 

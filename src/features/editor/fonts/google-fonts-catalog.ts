@@ -1,23 +1,34 @@
-/**
- * Familias disponibles en el editor (Google Fonts).
- * Debe coincidir con lo que cargamos en {@link loadGoogleFontFamily}.
- */
 export const GOOGLE_FONT_OPTIONS = [
-  { family: "Inter", label: "Inter" },
-  { family: "Roboto", label: "Roboto" },
-  { family: "Open Sans", label: "Open Sans" },
-  { family: "Lato", label: "Lato" },
-  { family: "Montserrat", label: "Montserrat" },
-  { family: "Oswald", label: "Oswald" },
-  { family: "Playfair Display", label: "Playfair Display" },
-  { family: "Merriweather", label: "Merriweather" },
-  { family: "Poppins", label: "Poppins" },
-  { family: "Raleway", label: "Raleway" },
-  { family: "Nunito", label: "Nunito" },
-  { family: "Source Sans 3", label: "Source Sans 3" },
-  { family: "Work Sans", label: "Work Sans" },
-  { family: "Noto Sans", label: "Noto Sans" },
-  { family: "DM Sans", label: "DM Sans" },
+  {
+    family: "Inter",
+    label: "Inter",
+    category: "sans",
+    weights: [300, 400, 500, 600, 700],
+  },
+  {
+    family: "Playfair Display",
+    label: "Playfair",
+    category: "serif",
+    weights: [400, 600, 700],
+  },
+  {
+    family: "Montserrat",
+    label: "Montserrat",
+    category: "sans",
+    weights: [400, 500, 700],
+  },
+  {
+    family: "Bebas Neue",
+    label: "Bebas",
+    category: "display",
+    weights: [400],
+  },
+  {
+    family: "Poppins",
+    label: "Poppins",
+    category: "sans",
+    weights: [300, 400, 600],
+  },
 ] as const;
 
 export const GOOGLE_FONT_CANONICAL_NAMES: ReadonlySet<string> = new Set(
