@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { NewProjectButton } from "@/app/new-project-button";
-import { SignOutForm } from "@/app/sign-out-form";
+import { SignOutButton } from "@/app/sign-out-button";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { listProjectsForUser } from "@/services/projects/projects-service";
@@ -66,7 +66,7 @@ export default async function Home() {
           {user ? (
             <>
               <NewProjectButton />
-              <SignOutForm />
+              <SignOutButton />
             </>
           ) : (
             <>

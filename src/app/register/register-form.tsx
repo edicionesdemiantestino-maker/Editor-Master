@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { logError } from "@/lib/logger";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export function RegisterForm() {
     });
 
     if (signUpErr) {
-      console.error("SIGNUP ERROR:", signUpErr);
+      logError("auth_client_signup_error", { message: signUpErr.message });
       setError(signUpErr.message || "No se pudo registrar.");
       setLoading(false);
       return;

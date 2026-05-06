@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import { logError } from "@/lib/logger";
 import { parseSafeInternalPath } from "@/lib/auth/form-validation";
 
 const LOGIN_ERRORS: Record<string, string> = {
@@ -49,7 +50,7 @@ export function LoginForm() {
     });
 
     if (error) {
-      console.error("LOGIN ERROR:", error);
+      logError("auth_client_login_error", { message: error.message });
       setClientError(
         error.message || "Credenciales incorrectas o error de conexión.",
       );
