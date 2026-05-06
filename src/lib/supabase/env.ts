@@ -48,8 +48,7 @@ export function isSupabaseConfigured(): boolean {
 
 /**
  * Devuelve solo el origen (`https://host[:puerto]`), sin path.
- * Así `emailRedirectTo` queda `origin/auth/callback` y nunca `…/callback/auth/callback`
- * (Supabase: "Invalid path specified in request URL").
+ * Útil para armar URLs de callback tipo `origin/auth/callback` sin duplicar rutas.
  */
 function toPublicOrigin(raw: string): string | null {
   const t = raw.trim().replace(/\/$/, "");
@@ -63,7 +62,7 @@ function toPublicOrigin(raw: string): string | null {
 }
 
 /**
- * Origen público de la app (magic links, OAuth redirect, `emailRedirectTo`).
+ * Origen público de la app (magic links, OAuth redirect).
  *
  * Prioridad: `NEXT_PUBLIC_SITE_URL` → URLs automáticas en Vercel (`VERCEL_PROJECT_PRODUCTION_URL`,
  * `VERCEL_URL`) → localhost. Solo el **origen** (sin `/ruta`); en Vercel se puede omitir
