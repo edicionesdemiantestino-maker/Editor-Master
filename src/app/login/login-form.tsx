@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/logger";
 import { parseSafeInternalPath } from "@/lib/auth/form-validation";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 const LOGIN_ERRORS: Record<string, string> = {
   auth_failed: "No pudimos validar el email o la contraseña.",
@@ -66,7 +67,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleLogin} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-zinc-700 dark:text-zinc-300">Email</span>
+        <span className="text-zinc-300">Email</span>
         <input
           type="email"
           name="email"
@@ -74,11 +75,11 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="email"
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+          className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-white placeholder:text-zinc-500 focus:border-indigo-400/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-zinc-700 dark:text-zinc-300">Contraseña</span>
+        <span className="text-zinc-300">Contraseña</span>
         <input
           type="password"
           name="password"
@@ -86,29 +87,23 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
           autoComplete="current-password"
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+          className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-white placeholder:text-zinc-500 focus:border-indigo-400/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
         />
       </label>
       {qpError ? (
-        <p className="text-sm text-red-600 dark:text-red-400">
+        <p className="text-sm text-red-400">
           {LOGIN_ERRORS[qpError] ?? qpError}
         </p>
       ) : null}
       {clientError ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{clientError}</p>
+        <p className="text-sm text-red-400">{clientError}</p>
       ) : null}
       {infoMessage ? (
-        <p className="text-sm text-emerald-700 dark:text-emerald-400">
-          {infoMessage}
-        </p>
+        <p className="text-sm text-emerald-400">{infoMessage}</p>
       ) : null}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-      >
+      <GradientButton type="submit" disabled={loading} className="w-full disabled:opacity-50">
         {loading ? "Entrando…" : "Entrar"}
-      </button>
+      </GradientButton>
     </form>
   );
 }

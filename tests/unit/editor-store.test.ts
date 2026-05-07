@@ -7,6 +7,7 @@ import {
   useEditorStore,
 } from "@/features/editor/store/editor-store";
 import { createDefaultTextElement } from "@/features/editor/store/document-mutations";
+import { isTextElement } from "@/entities/editor/element-guards";
 
 describe("useEditorStore (Zustand)", () => {
   beforeEach(() => {
@@ -42,9 +43,8 @@ describe("useEditorStore (Zustand)", () => {
       .getState()
       .updateElement(el.id, { text: "Editado" }, { recordHistory: false });
     expect(useEditorStore.getState().past.length).toBe(pastAfterAdd);
-    expect(useEditorStore.getState().present.canvas.elements[0]?.text).toBe(
-      "Editado",
-    );
+    const first = useEditorStore.getState().present.canvas.elements[0];
+    expect(first && isTextElement(first) ? first.text : null).toBe("Editado");
   });
 
   it("replacePresent en modo transient no agrega al historial", () => {

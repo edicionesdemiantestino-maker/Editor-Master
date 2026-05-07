@@ -1,6 +1,8 @@
 "use server";
 
+import { PLAN_LIMITS } from "@/lib/billing/plans";
 import { createServerClient } from "@/lib/supabase/server";
+import { getUserBillingPlanSlug } from "@/services/billing/get-user-plan";
 import { enforceLimit } from "@/services/plans/enforce-limit";
 
 export async function getBrandKit() {
@@ -45,6 +47,11 @@ export async function addBrandColor(kitId: string, hex: string) {
   const { data } = await supabase.auth.getUser();
   const user = data?.user ?? null;
   if (!user) return;
+
+  const slug = await getUserBillingPlanSlug();
+  if (!PLAN_LIMITS[slug].brandKit) {
+    throw new Error("brand_kit_requires_upgrade");
+  }
 
   await supabase.from("brand_colors").insert({
     kit_id: kitId,

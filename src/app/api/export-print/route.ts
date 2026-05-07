@@ -18,6 +18,8 @@ import { queueService } from "@/services/queue/queue-service";
 import { USAGE_COST_USD } from "@/lib/billing/usage-costs";
 import { trackUsageEvent } from "@/services/usage/usage-service";
 import { checkUsageLimit } from "@/services/billing/check-usage-limit";
+import { COSTS } from "@/lib/billing/costs";
+import { consumeCredits } from "@/services/billing/credits-service";
 
 import { EXPORT_PRINT_MAX_BODY_BYTES } from "./constants";
 import { rasterPxToContentPt, validateExportPrintBody } from "./validate-print-body";
@@ -191,6 +193,18 @@ export async function POST(req: Request) {
         { jobId, requestId },
         { status: 202, headers: { "X-Request-Id": requestId } },
       );
+    }
+
+    try {
+      await consumeCredits(COSTS.export_print, "export-print", requestId);
+    } catch (e) {
+      if (e instanceof Error && e.message === "insufficient_credits") {
+        return NextResponse.json(
+          { error: "insufficient_credits", requestId },
+          { status: 402, headers: { "X-Request-Id": requestId } },
+        );
+      }
+      throw e;
     }
 
     const v = validated.value;

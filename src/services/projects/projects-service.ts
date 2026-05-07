@@ -9,6 +9,31 @@ import {
 
 import type { ProjectRow, ProjectSummary } from "./project.types";
 
+export type ProjectCollaborationRole = "owner" | "editor" | "viewer";
+
+/** Rol efectivo para un usuario en un proyecto ya cargado bajo RLS (owner vs `project_members`). */
+export async function getCollaborationRoleForProject(
+  supabase: SupabaseClient,
+  projectId: string,
+  userId: string,
+  ownerUserId: string,
+): Promise<ProjectCollaborationRole> {
+  if (userId === ownerUserId) return "owner";
+  const { data, error } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.role === "editor" ? "editor" : "viewer";
+}
+
+export function roleCanEditProject(role: ProjectCollaborationRole): boolean {
+  return role === "owner" || role === "editor";
+}
+
 /**
  * Acceso a `public.projects` bajo RLS: SELECT/INSERT/UPDATE/DELETE solo filas con `user_id = auth.uid()`
  * (políticas en `supabase/migrations/20260504120000_create_projects.sql`).

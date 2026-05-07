@@ -18,28 +18,41 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     priceId?: string;
     planId?: string;
+    /** Alias de `planId` para el front (`pro` | `business`). */
+    plan?: string;
   };
+
+  let resolvedPlanId =
+    typeof body.planId === "string" && body.planId.trim().length > 0
+      ? body.planId.trim()
+      : typeof body.plan === "string"
+        ? body.plan.trim().toLowerCase()
+        : "";
+
+  if (resolvedPlanId === "free") {
+    return NextResponse.json({ error: "invalid_plan" }, { status: 400 });
+  }
 
   let plan:
     | { id: string; stripe_price_id: string | null; stripe_metered_price_id: string | null }
     | null = null;
 
-  if (typeof body.planId === "string" && body.planId.length > 0) {
+  if (resolvedPlanId.length > 0) {
     const { data, error } = await admin
       .from("billing_plans")
       .select("id, stripe_price_id, stripe_metered_price_id")
-      .eq("id", body.planId)
+      .eq("id", resolvedPlanId)
       .maybeSingle();
     if (error) {
       return NextResponse.json({ error: "plan_lookup_failed" }, { status: 500 });
     }
     plan = data as any;
-  } else if (typeof body.priceId === "string" && body.priceId.length > 0) {
+  } else if (typeof body.priceId === "string" && body.priceId.trim().length > 0) {
     // Backwards compatible: accept raw base priceId (validated against DB).
     const { data, error } = await admin
       .from("billing_plans")
       .select("id, stripe_price_id, stripe_metered_price_id")
-      .eq("stripe_price_id", body.priceId)
+      .eq("stripe_price_id", body.priceId.trim())
       .maybeSingle();
     if (error) {
       return NextResponse.json({ error: "plan_lookup_failed" }, { status: 500 });
@@ -67,7 +80,7 @@ export async function POST(req: Request) {
         ? [{ price: plan.stripe_metered_price_id as string }]
         : []),
     ],
-    success_url: `${origin}/dashboard/usage?success=1`,
+    success_url: `${origin}/dashboard?checkout=success`,
     cancel_url: `${origin}/pricing?canceled=1`,
     metadata: {
       user_id: auth.userId,

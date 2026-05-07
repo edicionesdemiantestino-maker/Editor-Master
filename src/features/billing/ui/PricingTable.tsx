@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+type PlanId = "free" | "pro" | "business";
+
 type PlanCard = {
-  id: "free" | "pro";
+  id: PlanId;
   name: string;
   priceLabel: string;
   highlights: string[];
@@ -15,24 +17,26 @@ const PLANS: PlanCard[] = [
     id: "free",
     name: "Free",
     priceLabel: "$0",
-    highlights: ["5 inpaint / mes", "2 export print / mes", "Límite duro"],
+    highlights: ["Inicio sin tarjeta", "Límites del plan Free", "Ideal para probar"],
   },
   {
     id: "pro",
     name: "Pro",
-    priceLabel: "$10 / mes",
-    highlights: [
-      "100 inpaint incluidos",
-      "50 export print incluidos",
-      "Overage permitido",
-    ],
+    priceLabel: "$12 / mes",
+    highlights: ["Más inpaint y export", "Overage vía Stripe", "Soporte estándar"],
     accent: "blue",
+  },
+  {
+    id: "business",
+    name: "Business",
+    priceLabel: "$49 / mes",
+    highlights: ["Alto volumen", "Límites ampliados", "Para equipos"],
   },
 ];
 
 export function PricingTable() {
-  const [loading, setLoading] = useState<string | null>(null);
-  const [currentPlan, setCurrentPlan] = useState<"free" | "pro" | null>(null);
+  const [loading, setLoading] = useState<PlanId | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<PlanId | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +46,8 @@ export function PricingTable() {
         if (!res.ok) return;
         const data = (await res.json()) as { plan?: string };
         if (cancelled) return;
-        if (data.plan === "free" || data.plan === "pro") setCurrentPlan(data.plan);
+        const p = data.plan === "business" ? "business" : data.plan === "pro" ? "pro" : "free";
+        setCurrentPlan(p);
       } catch {
         // ignore
       }
@@ -52,46 +57,45 @@ export function PricingTable() {
     };
   }, []);
 
-  const handleCheckout = async (planId: "pro") => {
+  const handleCheckout = async (planId: "pro" | "business") => {
     setLoading(planId);
 
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ planId }),
+      body: JSON.stringify({ plan: planId }),
     });
 
-    const data = (await res.json().catch(() => ({}))) as { url?: string };
+    const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
 
     if (res.ok && data.url) {
       window.location.href = data.url;
       return;
     }
 
-    alert("Error iniciando checkout");
+    alert(data.error ?? "Error iniciando checkout");
     setLoading(null);
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
-      <h1 className="mb-10 text-center text-2xl font-semibold">Planes y precios</h1>
+    <div className="mx-auto max-w-6xl px-6 py-12">
+      <h1 className="mb-10 text-center text-2xl font-semibold text-white">Planes y precios</h1>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan ? currentPlan === plan.id : plan.id === "free";
-          const isPro = plan.id === "pro";
           const isLoading = loading === plan.id;
 
           return (
             <div
               key={plan.id}
               className={[
-                "relative rounded-xl border bg-white p-6 dark:bg-zinc-900",
-                plan.accent === "blue" ? "border-2 border-blue-600" : "",
+                "relative rounded-xl border border-white/10 bg-white/5 p-6 text-white backdrop-blur-xl dark:bg-zinc-900/80",
+                plan.accent === "blue" ? "border-indigo-500/50 ring-1 ring-indigo-500/40" : "",
               ].join(" ")}
             >
-              {isPro ? (
-                <span className="absolute right-3 top-3 rounded bg-blue-600 px-2 py-0.5 text-xs text-white">
+              {plan.accent === "blue" ? (
+                <span className="absolute right-3 top-3 rounded bg-indigo-600 px-2 py-0.5 text-xs text-white">
                   Popular
                 </span>
               ) : null}
@@ -99,7 +103,7 @@ export function PricingTable() {
               <h2 className="mb-2 text-lg font-medium">{plan.name}</h2>
               <p className="mb-4 text-3xl font-bold">{plan.priceLabel}</p>
 
-              <ul className="mb-6 space-y-2 text-sm">
+              <ul className="mb-6 space-y-2 text-sm text-zinc-300">
                 {plan.highlights.map((h) => (
                   <li key={h}>✔ {h}</li>
                 ))}
@@ -107,25 +111,38 @@ export function PricingTable() {
 
               {plan.id === "free" ? (
                 <button
-                  disabled
-                  className="w-full cursor-not-allowed rounded-md bg-zinc-200 py-2 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                  type="button"
+                  disabled={isCurrent}
+                  className="w-full rounded-lg border border-white/15 bg-white/10 py-2 text-sm font-medium text-zinc-200 disabled:cursor-default disabled:opacity-60"
                 >
                   {isCurrent ? "Plan actual" : "Incluido"}
                 </button>
               ) : (
                 <button
-                  onClick={() => handleCheckout("pro")}
+                  type="button"
+                  onClick={() => {
+                    if (plan.id === "pro" || plan.id === "business") {
+                      void handleCheckout(plan.id);
+                    }
+                  }}
                   disabled={isCurrent || isLoading}
-                  className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="w-full rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 disabled:opacity-50 hover:brightness-105"
                 >
-                  {isCurrent ? "Plan actual" : isLoading ? "Redirigiendo..." : "Actualizar a Pro"}
+                  {isCurrent ? "Plan actual" : isLoading ? "Redirigiendo..." : `Elegir ${plan.name}`}
                 </button>
               )}
             </div>
           );
         })}
       </div>
+
+      <p className="mt-8 text-center text-sm text-zinc-400">
+        Checkout seguro con Stripe · también podés comprar desde la página{" "}
+        <a href="/pricing" className="text-indigo-300 underline decoration-indigo-300/40">
+          /pricing
+        </a>
+        .
+      </p>
     </div>
   );
 }
-

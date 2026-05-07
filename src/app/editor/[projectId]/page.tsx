@@ -2,7 +2,11 @@ import { redirect } from "next/navigation";
 
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { requireServerUser } from "@/lib/supabase/require-server-user";
-import { getProjectById } from "@/services/projects/projects-service";
+import {
+  getCollaborationRoleForProject,
+  getProjectById,
+  roleCanEditProject,
+} from "@/services/projects/projects-service";
 
 import { EditorPageClient } from "./editor-page-client";
 
@@ -33,11 +37,23 @@ export default async function EditorProjectPage({ params }: PageProps) {
   }
 
   const row = await getProjectById(auth.supabase, projectId);
-  if (!row || row.user_id !== auth.userId) {
+  if (!row) {
     redirect("/?error=project-not-found");
   }
 
+  const role = await getCollaborationRoleForProject(
+    auth.supabase,
+    projectId,
+    auth.userId,
+    row.user_id,
+  );
+  const canEdit = roleCanEditProject(role);
+
   return (
-    <EditorPageClient projectId={projectId} initialDocument={row.data} />
+    <EditorPageClient
+      projectId={projectId}
+      initialDocument={row.data}
+      canEditProject={canEdit}
+    />
   );
 }

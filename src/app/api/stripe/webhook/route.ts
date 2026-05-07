@@ -46,6 +46,23 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as any;
         const userId = session?.metadata?.user_id as string | undefined;
+
+        // One-time purchase: credits pack
+        if (session?.mode === "payment") {
+          const creditsRaw = session?.metadata?.credits as string | undefined;
+          const credits = Math.floor(Number(creditsRaw ?? 0));
+          if (!userId || !Number.isFinite(credits) || credits <= 0) break;
+
+          const { error } = await admin.rpc("add_credits", {
+            p_user_id: userId,
+            p_amount: credits,
+            p_ref: session?.id ?? event.id,
+          });
+          if (error) throw error;
+          break;
+        }
+
+        // Subscription checkout (existing flow)
         const subscriptionId = session?.subscription as string | undefined;
         if (!userId || !subscriptionId) break;
 
@@ -119,6 +136,7 @@ export async function POST(req: Request) {
 
         break;
       }
+
     }
   } catch (e) {
     console.error("stripe_webhook_handler_failed", e);

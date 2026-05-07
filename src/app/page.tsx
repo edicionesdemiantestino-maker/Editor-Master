@@ -1,147 +1,135 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
+
+import { Button } from "@/components/ui/button";
+
+type PlanCard = {
+  name: string;
+  price: string;
+  href: string;
+  highlight?: boolean;
+};
+
+const PLANS: PlanCard[] = [
+  { name: "Free", price: "$0", href: "/register" },
+  { name: "Pro", price: "$12", href: "/pricing", highlight: true },
+  { name: "Business", price: "$49", href: "/pricing" },
+];
 
 export default function Home() {
   return (
-    <div className="min-h-screen overflow-hidden bg-black text-white">
-      {/* Gradient Background */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-600/30 via-blue-500/20 to-transparent blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden bg-black text-white">
+      {/* BACKGROUND */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(120,119,198,0.3),transparent_40%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(255,0,128,0.2),transparent_40%)]" />
+        <div className="absolute inset-0 backdrop-blur-3xl" />
+      </div>
 
-      {/* HEADER */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-4">
-        <div className="text-lg font-semibold">Editor Maestro</div>
-        <div className="flex gap-4 text-sm">
-          <Link href="/login" className="opacity-80 hover:opacity-100">
+      {/* NAV */}
+      <nav className="relative z-10 flex items-center justify-between px-8 py-6">
+        <div className="text-xl font-bold">Editor Maestro</div>
+        <div className="flex gap-4">
+          <Button variant="ghost" href="/login">
             Login
-          </Link>
-          <a href="#pricing" className="opacity-80 hover:opacity-100">
-            Pricing
-          </a>
-          <Link
-            href="/login"
-            className="rounded-lg bg-white px-4 py-2 font-medium text-black transition hover:bg-gray-200"
-          >
-            Empezar
-          </Link>
+          </Button>
+          <Button href="/register">Get Started</Button>
         </div>
-      </header>
+      </nav>
 
       {/* HERO */}
-      <section className="relative z-10 flex flex-col items-center justify-center px-6 pb-24 pt-32 text-center">
+      <section className="relative z-10 flex flex-col items-center justify-center px-6 py-32 text-center">
         <motion.h1
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-5xl font-bold leading-tight md:text-7xl"
+          transition={{ duration: 0.8 }}
+          className="text-6xl font-bold leading-tight tracking-tight md:text-8xl"
         >
-          Diseña como un pro
-          <span className="block bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-            con inteligencia artificial
+          Diseña el futuro
+          <span className="block bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
+            sin límites
           </span>
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mt-6 max-w-xl text-lg text-gray-300"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-6 max-w-xl text-lg text-zinc-400"
         >
-          Editor visual + generación inteligente en un solo lugar.
+          Un editor visual de nueva generación con performance extrema y diseño de nivel profesional.
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 flex gap-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-10 flex flex-wrap justify-center gap-4"
         >
-          <Link
-            href="/login"
-            className="rounded-xl bg-white px-6 py-3 font-semibold text-black transition hover:bg-gray-200"
-          >
+          <Button size="lg" href="/register">
             Empezar gratis
-          </Link>
-          <a
-            href="#demo"
-            className="rounded-xl border border-white/20 px-6 py-3 transition hover:bg-white/10"
-          >
+          </Button>
+          <Button size="lg" variant="outline" href="/editor/demo">
             Ver demo
-          </a>
+          </Button>
         </motion.div>
       </section>
 
-      {/* FEATURES */}
-      <section className="relative z-10 mx-auto grid max-w-6xl gap-8 px-6 py-20 md:grid-cols-3">
-        {["Editor visual", "IA integrada", "Export profesional"].map(
-          (title, i) => (
-            <motion.div
-              key={title}
-              whileHover={{ scale: 1.05 }}
-              className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur"
-            >
-              <div className="mb-2 text-xl font-semibold">{title}</div>
-              <p className="text-sm text-gray-400">
-                Diseñá rápido con un flujo potente y moderno.
-              </p>
-            </motion.div>
-          ),
-        )}
-      </section>
-
-      {/* PREVIEW */}
-      <section id="demo" className="relative z-10 px-6 py-24 text-center">
-        <h2 className="mb-6 text-3xl font-bold">Mirá el editor en acción</h2>
-        <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-white/10">
-          <div className="flex h-64 items-center justify-center bg-gradient-to-br from-purple-500/30 to-blue-500/30">
-            Preview del editor
+      {/* DASHBOARD PREVIEW */}
+      <section className="relative z-10 px-8 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.55 }}
+          className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl"
+        >
+          <div className="grid grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <motion.div
+                key={i}
+                animate={{ y: [0, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 4 + i, ease: "easeInOut" }}
+                className="h-32 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20"
+              />
+            ))}
           </div>
-        </div>
-        <div className="mt-6">
-          <Link
-            href="/editor/demo"
-            className="inline-flex rounded-xl border border-white/20 px-6 py-3 text-sm transition hover:bg-white/10"
-          >
-            Abrir demo real
-          </Link>
-        </div>
+        </motion.div>
       </section>
 
       {/* PRICING */}
-      <section id="pricing" className="relative z-10 mx-auto max-w-6xl px-6 py-24">
-        <h2 className="mb-12 text-center text-3xl font-bold">Planes</h2>
-        <div className="grid gap-6 md:grid-cols-3">
-          {["Free", "Pro", "Business"].map((plan) => (
+      <section className="relative z-10 px-8 py-24">
+        <h2 className="mb-12 text-center text-4xl font-bold">Planes</h2>
+        <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">
+          {PLANS.map((plan) => (
             <div
-              key={plan}
-              className="rounded-2xl border border-white/10 bg-white/5 p-6"
+              key={plan.name}
+              className={`rounded-2xl border p-6 ${
+                plan.highlight
+                  ? "border-purple-500 bg-purple-500/10"
+                  : "border-white/10 bg-white/5"
+              }`}
             >
-              <h3 className="mb-4 text-xl font-semibold">{plan}</h3>
-              <p className="mb-6 text-gray-400">Ideal para comenzar</p>
-              <button className="w-full rounded-lg bg-white py-2 font-medium text-black hover:bg-gray-200">
+              <h3 className="text-xl font-semibold">{plan.name}</h3>
+              <p className="mt-2 text-3xl font-bold">{plan.price}</p>
+              <Button className="mt-6 w-full" href={plan.href}>
                 Elegir
-              </button>
+              </Button>
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA FINAL */}
-      <section className="relative z-10 px-6 py-24 text-center">
-        <h2 className="mb-6 text-4xl font-bold">Empieza ahora</h2>
-        <Link
-          href="/login"
-          className="inline-flex rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 px-8 py-4 font-semibold"
-        >
-          Crear mi primer diseño
-        </Link>
+      {/* CTA */}
+      <section className="relative z-10 py-24 text-center">
+        <h2 className="text-4xl font-bold">Empieza ahora</h2>
+        <div className="mt-6 flex justify-center">
+          <Button size="lg" href="/register">
+            Crear cuenta
+          </Button>
+        </div>
       </section>
-
-      {/* FOOTER */}
-      <footer className="relative z-10 px-6 py-10 text-center text-sm text-gray-500">
-        © 2026 Editor Maestro
-      </footer>
     </div>
   );
 }

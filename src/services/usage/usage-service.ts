@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function trackUsageEvent(
   supabase: SupabaseClient,
   userId: string,
-  kind: "inpaint" | "export-print",
+  kind: "inpaint" | "export-print" | "ai-text",
   jobId: string | null,
   costUnits = 1,
   costUsd = 0,
@@ -13,6 +13,7 @@ export async function trackUsageEvent(
     kind,
     job_id: jobId,
     cost_units: costUnits,
+    amount: costUnits,
     cost_usd: costUsd,
   };
 

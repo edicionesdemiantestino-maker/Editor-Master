@@ -50,7 +50,7 @@ vi.mock("@/features/editor/export/services/export-pipeline", () => ({
 
 vi.mock("@/features/editor/export/services/print-export-client", () => ({
   requestPrintCmykPdfDownload: vi.fn().mockResolvedValue({
-    blob: new Blob([9, 9, 9]),
+    blob: new Blob([new Uint8Array([9, 9, 9])]),
     filename: "mock-cmyk.pdf",
   }),
 }));
@@ -62,12 +62,11 @@ beforeAll(() => {
     url: "http://localhost/",
   });
   const w = jsdomInstance.window;
-  const g = globalThis as typeof globalThis & {
-    window: Window;
-    document: Document;
-  };
-  g.window = w as unknown as Window;
-  g.document = w.document;
+  // Global window/document are runtime-injected for code paths using DOM APIs.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const g = globalThis as any;
+  Object.defineProperty(g, "window", { value: w, configurable: true });
+  Object.defineProperty(g, "document", { value: w.document, configurable: true });
 });
 
 afterAll(() => {
@@ -115,7 +114,9 @@ function stubAnchorDownloads() {
     }
     return origCreate(tag as keyof HTMLElementTagNameMap);
   });
-  vi.spyOn(document.body, "appendChild").mockImplementation(() => null);
+  // JSDOM types: appendChild never returns null (runtime here does).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  vi.spyOn(document.body, "appendChild").mockImplementation(() => document.body as any);
   vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
   vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
   return anchors;

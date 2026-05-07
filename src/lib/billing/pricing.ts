@@ -11,5 +11,11 @@ export const PLANS = {
       "export-print": 100,
     },
   },
+  business: {
+    monthlyIncluded: {
+      inpaint: 1000,
+      "export-print": 500,
+    },
+  },
 } as const;
 

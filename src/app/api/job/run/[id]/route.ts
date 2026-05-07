@@ -20,7 +20,13 @@ import { getInpaintCachedResult, setInpaintCachedResult } from "@/services/inpai
 import { buildCmykPrintPdfBuffer } from "@/services/print/print-service";
 import { releaseJobLock, tryAcquireJobLockSafe } from "@/services/queue/job-lock";
 import { queueService } from "@/services/queue/queue-service";
+import {
+  assertInpaintProductAllowed,
+  ProductUsageBlockedError,
+} from "@/services/usage/enforce-product-usage";
 import { validateExportPrintBody, rasterPxToContentPt } from "@/app/api/export-print/validate-print-body";
+import { COSTS } from "@/lib/billing/costs";
+import { consumeCredits } from "@/services/billing/credits-service";
 
 export const runtime = "nodejs";
 
@@ -131,6 +137,46 @@ export async function POST(
     let result: unknown;
 
     if (locked.kind === "inpaint") {
+      try {
+        await assertInpaintProductAllowed(auth.supabase, auth.userId);
+      } catch (e) {
+        if (e instanceof ProductUsageBlockedError) {
+          await queueService.update(id, {
+            status: "error",
+            errorCode: e.code,
+            attempts: locked.attempts,
+            durationMs: Date.now() - startedAt,
+            lastErrorAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+          return NextResponse.json(
+            { ok: false, error: e.code, kind: e.kind, requestId },
+            { status: 403, headers: { "X-Request-Id": requestId } },
+          );
+        }
+        throw e;
+      }
+
+      try {
+        await consumeCredits(COSTS.inpaint, "inpaint", locked.id);
+      } catch (e) {
+        if (e instanceof Error && e.message === "insufficient_credits") {
+          await queueService.update(id, {
+            status: "error",
+            errorCode: "insufficient_credits",
+            attempts: locked.attempts,
+            durationMs: Date.now() - startedAt,
+            lastErrorAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+          return NextResponse.json(
+            { ok: false, error: "insufficient_credits", requestId },
+            { status: 402, headers: { "X-Request-Id": requestId } },
+          );
+        }
+        throw e;
+      }
+
       const input = locked.payload as {
         imageDataUrl: string;
         maskDataUrl: string;
@@ -191,6 +237,26 @@ export async function POST(
     } else if (locked.kind === "export-print") {
       const validated = validateExportPrintBody(locked.payload);
       if (!validated.ok) throw new Error(validated.publicCode);
+
+      try {
+        await consumeCredits(COSTS.export_print, "export-print", locked.id);
+      } catch (e) {
+        if (e instanceof Error && e.message === "insufficient_credits") {
+          await queueService.update(id, {
+            status: "error",
+            errorCode: "insufficient_credits",
+            attempts: locked.attempts,
+            durationMs: Date.now() - startedAt,
+            lastErrorAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+          return NextResponse.json(
+            { ok: false, error: "insufficient_credits", requestId },
+            { status: 402, headers: { "X-Request-Id": requestId } },
+          );
+        }
+        throw e;
+      }
 
       const quota = await checkUsageLimit(auth.supabase, "export-print");
       if (!quota.allowed) throw new Error("quota_exceeded");

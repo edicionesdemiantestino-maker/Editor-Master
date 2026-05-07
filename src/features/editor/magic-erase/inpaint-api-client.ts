@@ -17,6 +17,10 @@ function humanMessageForCode(code: string | undefined, status: number): string {
       return "Demasiadas solicitudes. Probá de nuevo en unos segundos.";
     case "too_many_concurrent_requests":
       return "Ya hay un inpainting en curso. Esperá a que termine.";
+    case "upgrade_required":
+      return "El inpainting está reservado para planes pagos. Mejorá el plan desde el panel de cuenta.";
+    case "insufficient_credits":
+      return "Te quedaste sin créditos para inpaint. Comprá más créditos desde el dashboard.";
     case "payload_too_large":
       return "Las imágenes son demasiado grandes para el servidor (límite de cuerpo).";
     case "content_length_required":
@@ -37,7 +41,9 @@ function humanMessageForCode(code: string | undefined, status: number): string {
     case "upstream_timeout":
       return "La descarga de la imagen tardó demasiado. Reintentá.";
     default:
-      return status === 429
+      return status === 402
+        ? "Te quedaste sin créditos."
+        : status === 429
         ? "Límite de uso alcanzado."
         : `Error del servidor (${status}).`;
   }

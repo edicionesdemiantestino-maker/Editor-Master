@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { GradientButton } from "@/components/ui/gradient-button";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/logger";
 
@@ -39,18 +40,18 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSignUp} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-zinc-700 dark:text-zinc-300">Email</span>
+        <span className="text-zinc-300">Email</span>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="email"
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+          className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-white placeholder:text-zinc-500 focus:border-indigo-400/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-zinc-700 dark:text-zinc-300">Contraseña</span>
+        <span className="text-zinc-300">Contraseña</span>
         <input
           type="password"
           value={password}
@@ -58,19 +59,15 @@ export function RegisterForm() {
           required
           minLength={6}
           autoComplete="new-password"
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+          className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-white placeholder:text-zinc-500 focus:border-indigo-400/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
         />
       </label>
       {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-sm text-red-400">{error}</p>
       ) : null}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-      >
+      <GradientButton type="submit" disabled={loading} className="w-full disabled:opacity-50">
         {loading ? "Creando cuenta…" : "Registrarme"}
-      </button>
+      </GradientButton>
     </form>
   );
 }

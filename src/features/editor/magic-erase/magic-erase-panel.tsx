@@ -12,6 +12,7 @@ import { useEditorStore } from "../store/editor-store";
 import { useMagicEraseStore } from "./magic-erase-store";
 import { runMagicEraseForSelectedImage } from "./run-magic-erase";
 import { useMagicEraseRectCapture } from "./use-magic-erase-rect-capture";
+import { BuyCreditsButton } from "@/features/billing/credits/buy-credits-button";
 
 type MagicErasePanelProps = {
   getCanvas: () => Canvas | null;
@@ -33,6 +34,7 @@ export function MagicErasePanel({ getCanvas }: MagicErasePanelProps) {
   });
 
   const [busy, setBusy] = useState(false);
+  const [insufficientCredits, setInsufficientCredits] = useState(false);
 
   const selectedIsImage =
     selectedIds.length === 1 && selectedElement?.type === "image";
@@ -60,6 +62,7 @@ export function MagicErasePanel({ getCanvas }: MagicErasePanelProps) {
       }
 
       setBusy(true);
+      setInsufficientCredits(false);
       try {
         const { dataUrl, width, height } = await runMagicEraseForSelectedImage({
           fabricImage: obj,
@@ -78,6 +81,9 @@ export function MagicErasePanel({ getCanvas }: MagicErasePanelProps) {
         );
       } catch (e) {
         console.error(e);
+        if (e instanceof Error && e.message.toLowerCase().includes("créditos")) {
+          setInsufficientCredits(true);
+        }
         window.alert(
           e instanceof Error ? e.message : "Falló el inpainting remoto.",
         );
@@ -158,6 +164,15 @@ export function MagicErasePanel({ getCanvas }: MagicErasePanelProps) {
         <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
           Procesando con Replicate…
         </p>
+      ) : null}
+      {insufficientCredits ? (
+        <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+          Te quedaste sin créditos para inpaint.{" "}
+          <span className="text-amber-200/80">Comprá más y reintentá.</span>
+          <div className="mt-2">
+            <BuyCreditsButton pack="medium" />
+          </div>
+        </div>
       ) : null}
     </section>
   );

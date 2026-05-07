@@ -31,6 +31,8 @@ type EditorPersistenceProviderProps = {
   children: ReactNode;
   projectId: string;
   persistenceReady: boolean;
+  /** Owner / editor: miembros con rol `viewer` no persisten cambios. */
+  allowCloudPersist?: boolean;
   /** `canvas.toJSON()` del canvas existente (ref en el shell). */
   getFabricSnapshot?: () => unknown | null;
 };
@@ -39,11 +41,15 @@ export function EditorPersistenceProvider({
   children,
   projectId,
   persistenceReady,
+  allowCloudPersist = true,
   getFabricSnapshot,
 }: EditorPersistenceProviderProps) {
   const isRemote = projectId !== "demo";
   const isCloudPersistenceActive =
-    isRemote && isSupabaseConfigured() && persistenceReady;
+    allowCloudPersist &&
+    isRemote &&
+    isSupabaseConfigured() &&
+    persistenceReady;
 
   const [autosaveState, setAutosaveState] = useState<EditorAutosaveState>({
     saveStatus: "idle",

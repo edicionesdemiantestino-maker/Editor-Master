@@ -3,6 +3,8 @@ import { createHybridConcurrentSlotLimiter } from "./hybrid-concurrent-slots";
 import type { HybridRateDecision } from "./hybrid-sliding-window";
 import { createHybridSlidingWindowRateLimiter } from "./hybrid-sliding-window";
 import {
+  AI_TEXT_RATE_LIMIT_MAX,
+  AI_TEXT_RATE_LIMIT_WINDOW_MS,
   CREATE_PROJECT_RATE_LIMIT_MAX,
   CREATE_PROJECT_RATE_LIMIT_WINDOW_MS,
   EXPORT_PRINT_MAX_CONCURRENT_PER_USER,
@@ -120,6 +122,14 @@ export const rateLimitService = {
       "create-project",
       CREATE_PROJECT_RATE_LIMIT_MAX,
       CREATE_PROJECT_RATE_LIMIT_WINDOW_MS,
+    )(userKey(userId));
+  },
+
+  async consumeAiText(userId: string): Promise<HybridRateDecision> {
+    return getSliding(
+      "ai-text",
+      AI_TEXT_RATE_LIMIT_MAX,
+      AI_TEXT_RATE_LIMIT_WINDOW_MS,
     )(userKey(userId));
   },
 } as const;

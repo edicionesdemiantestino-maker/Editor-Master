@@ -20,12 +20,19 @@ const EditorShell = dynamic(
 export function EditorPageClient({
   projectId,
   initialDocument,
+  canEditProject = true,
 }: {
   projectId: string;
   /** Si el servidor ya validó sesión + fila, evitamos un segundo fetch en el cliente. */
   initialDocument?: EditorDocument;
+  /** Viewer: sólo lectura (sin autosave ni guardado manual). */
+  canEditProject?: boolean;
 }) {
   return (
-    <EditorShell projectId={projectId} initialDocument={initialDocument} />
+    <EditorShell
+      projectId={projectId}
+      initialDocument={initialDocument}
+      canEditProject={canEditProject}
+    />
   );
 }

@@ -1,6 +1,6 @@
-import { UsageDashboard } from "@/features/billing/ui/usage-dashboard";
+import BillingDashboard from "@/components/billing/billing-dashboard";
 
 export default function BillingPage() {
-  return <UsageDashboard />;
+  return <BillingDashboard />;
 }
 

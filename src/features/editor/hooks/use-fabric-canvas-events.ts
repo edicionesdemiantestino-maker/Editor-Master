@@ -14,6 +14,8 @@ import { bumpFabricSceneDirty } from "../persistence/fabric-scene-dirty-bus";
 import { scheduleFabricRender } from "../canvas/fabric-render-schedule";
 import { pickUniformImageScale } from "../canvas/image-transform";
 
+const FABRIC_DRAG_GRID_PX = 10;
+
 type FabricCanvasEventsOptions = {
   getCanvas: () => Canvas | null;
   reconcileGuardRef: MutableRefObject<boolean>;
@@ -93,8 +95,25 @@ export function useFabricCanvasEvents({
       scheduleFabricRender(canvas);
     };
 
-    const onObjectMoving = () => {
+    const onObjectMoving = (opt: { target?: FabricObject }) => {
       if (reconcileGuardRef.current) return;
+      const t = opt.target;
+      if (!t) {
+        scheduleFabricRender(canvas);
+        return;
+      }
+      const rawLeft = t.left ?? 0;
+      const rawTop = t.top ?? 0;
+      if (!Number.isFinite(rawLeft) || !Number.isFinite(rawTop)) {
+        scheduleFabricRender(canvas);
+        return;
+      }
+      const grid = FABRIC_DRAG_GRID_PX;
+      t.set({
+        left: Math.round(rawLeft / grid) * grid,
+        top: Math.round(rawTop / grid) * grid,
+      });
+      t.setCoords();
       scheduleFabricRender(canvas);
     };
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/logger";
@@ -19,7 +20,7 @@ export function SignOutButton({ className = "" }: { className?: string }) {
         logError("auth_client_signout_error", { message: error.message });
       }
     } catch (e) {
-      logError("auth_client_signout_exception", { name: (e as any)?.name });
+      logError("auth_client_signout_exception", { name: (e as Error)?.name });
     } finally {
       router.refresh();
       router.push("/login");
@@ -28,14 +29,16 @@ export function SignOutButton({ className = "" }: { className?: string }) {
   }
 
   return (
-    <button
+    <motion.button
       type="button"
-      onClick={handleSignOut}
+      onClick={() => void handleSignOut()}
       disabled={loading}
-      className={`rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800 ${className}`}
+      whileHover={{ scale: loading ? 1 : 1.03 }}
+      whileTap={{ scale: loading ? 1 : 0.97 }}
+      transition={{ type: "spring", stiffness: 440, damping: 30 }}
+      className={`rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-100 backdrop-blur-xl hover:border-white/25 hover:bg-white/10 disabled:opacity-60 ${className}`}
     >
       {loading ? "Saliendo…" : "Salir"}
-    </button>
+    </motion.button>
   );
 }
-

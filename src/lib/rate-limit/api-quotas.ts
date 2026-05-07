@@ -32,3 +32,7 @@ export const EXPORT_PRINT_TARGET_DPI_MAX = 600;
 /** Server Action createProjectAction: no es HTTP route; comparte Upstash con prefijo create-project. */
 export const CREATE_PROJECT_RATE_LIMIT_MAX = 15;
 export const CREATE_PROJECT_RATE_LIMIT_WINDOW_MS = 60_000;
+
+export const AI_TEXT_MAX_PROMPT_LENGTH = 600;
+export const AI_TEXT_RATE_LIMIT_MAX = 12;
+export const AI_TEXT_RATE_LIMIT_WINDOW_MS = 60_000;

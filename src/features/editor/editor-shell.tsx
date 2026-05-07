@@ -11,9 +11,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { EditorCanvas } from "./canvas/editor-canvas";
 import { useFontPreload } from "./fonts/use-font-preload";
 import { MagicErasePanel } from "./magic-erase/magic-erase-panel";
-import { BrandKitPanel } from "./brand/brand-kit-panel";
-import { LayersPanel } from "./layers/layers-panel";
 import { TextInspectorPanel } from "./text/text-inspector-panel";
+import { EditorLeftSidebar } from "./shell/editor-left-sidebar";
 import { EditorPersistenceProvider } from "./persistence/editor-persistence-context";
 import { EditorToolbar } from "./toolbar/editor-toolbar";
 import {
@@ -25,9 +24,14 @@ type EditorShellProps = {
   projectId: string;
   /** Documento ya hidratado en el servidor (evita refetch si la ruta pasó por `getProjectById`). */
   initialDocument?: EditorDocument;
+  canEditProject?: boolean;
 };
 
-export function EditorShell({ projectId, initialDocument }: EditorShellProps) {
+export function EditorShell({
+  projectId,
+  initialDocument,
+  canEditProject = true,
+}: EditorShellProps) {
   const fabricCanvasRef = useRef<Canvas | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadPending, setLoadPending] = useState(projectId !== "demo");
@@ -104,6 +108,7 @@ export function EditorShell({ projectId, initialDocument }: EditorShellProps) {
     <EditorPersistenceProvider
       projectId={projectId}
       persistenceReady={persistenceReady}
+      allowCloudPersist={projectId === "demo" ? true : canEditProject}
       getFabricSnapshot={() => {
         const c = fabricCanvasRef.current;
         if (!c) return null;
@@ -113,14 +118,20 @@ export function EditorShell({ projectId, initialDocument }: EditorShellProps) {
           : null;
       }}
     >
-      <div className="flex h-full min-h-0 flex-1 flex-col bg-zinc-100 dark:bg-zinc-950">
+      <div className="flex h-full min-h-0 flex-1 flex-col bg-zinc-950 text-zinc-100">
         {loadPending ? (
-          <div className="border-b border-zinc-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-zinc-700 dark:bg-amber-950/40 dark:text-amber-100">
+          <div className="border-b border-zinc-800 bg-amber-950/50 px-4 py-2 text-sm text-amber-100">
             Cargando proyecto…
           </div>
         ) : null}
+        {projectId !== "demo" && !canEditProject && !loadPending && !loadError ? (
+          <div className="border-b border-zinc-800 bg-zinc-800/80 px-4 py-2 text-xs text-zinc-300">
+            Este proyecto está compartido con vos como solo lectura.
+          </div>
+        ) : null}
+
         {loadError ? (
-          <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 bg-red-50 px-4 py-2 text-sm text-red-900 dark:border-zinc-700 dark:bg-red-950/30 dark:text-red-100">
+          <div className="flex flex-wrap items-center gap-3 border-b border-zinc-800 bg-red-950/40 px-4 py-2 text-sm text-red-100">
             <span>{loadError}</span>
             <Link href="/login" className="font-medium underline">
               Ir a ingresar
@@ -130,23 +141,32 @@ export function EditorShell({ projectId, initialDocument }: EditorShellProps) {
             </Link>
           </div>
         ) : null}
-        <EditorToolbar
-          projectId={projectId}
-          fabricCanvasGetter={() => fabricCanvasRef.current}
-        />
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-6">
-            <EditorCanvas
-              onCanvasReady={(c) => {
-                fabricCanvasRef.current = c;
-              }}
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[260px_minmax(0,1fr)_320px]">
+          <aside className="hidden min-h-0 w-[260px] shrink-0 overflow-hidden border-r border-zinc-800 lg:block">
+            <EditorLeftSidebar projectId={projectId} />
+          </aside>
+
+          <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+            <EditorToolbar
+              projectId={projectId}
+              fabricCanvasGetter={() => fabricCanvasRef.current}
             />
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-zinc-950 p-4">
+              <EditorCanvas
+                onCanvasReady={(c) => {
+                  fabricCanvasRef.current = c;
+                }}
+              />
+            </div>
           </div>
-          <aside className="flex w-72 shrink-0 flex-col border-l border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
+
+          <aside className="min-h-0 w-full shrink-0 overflow-y-auto border-t border-zinc-800 bg-zinc-900 lg:w-[320px] lg:border-l lg:border-t-0">
+            <div className="border-b border-zinc-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              Herramientas e inspector
+            </div>
             <MagicErasePanel getCanvas={() => fabricCanvasRef.current} />
             <TextInspectorPanel />
-            <BrandKitPanel />
-            <LayersPanel />
           </aside>
         </div>
       </div>

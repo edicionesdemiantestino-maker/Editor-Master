@@ -26,6 +26,12 @@ import { getInpaintCachedResult, setInpaintCachedResult } from "@/services/inpai
 import { trackUsageEvent } from "@/services/usage/usage-service";
 import { checkUsageLimit } from "@/services/billing/check-usage-limit";
 import { maybeReportMeteredUsage } from "@/services/billing/metered-usage-billing";
+import {
+  assertInpaintProductAllowed,
+  ProductUsageBlockedError,
+} from "@/services/usage/enforce-product-usage";
+import { COSTS } from "@/lib/billing/costs";
+import { consumeCredits } from "@/services/billing/credits-service";
 
 export const maxDuration = 120;
 /** image-size y Buffer requieren Node (no Edge). */
@@ -192,6 +198,18 @@ export async function POST(req: Request) {
     );
   }
 
+  try {
+    await assertInpaintProductAllowed(auth.supabase, userId);
+  } catch (e) {
+    if (e instanceof ProductUsageBlockedError) {
+      return NextResponse.json(
+        { error: e.code, kind: e.kind, requestId },
+        { status: 403, headers: { "X-Request-Id": requestId } },
+      );
+    }
+    throw e;
+  }
+
   // Cache (P1): avoid reprocessing identical requests.
   const cacheHit = await getInpaintCachedResult(validated.value);
   if (cacheHit.hit) {
@@ -248,6 +266,18 @@ export async function POST(req: Request) {
   }
 
   try {
+    try {
+      await consumeCredits(COSTS.inpaint, "inpaint", requestId);
+    } catch (e) {
+      if (e instanceof Error && e.message === "insufficient_credits") {
+        return NextResponse.json(
+          { error: "insufficient_credits", requestId },
+          { status: 402, headers: { "X-Request-Id": requestId } },
+        );
+      }
+      throw e;
+    }
+
     const quota = await checkUsageLimit(auth.supabase, "inpaint");
     if (!quota.allowed) {
       return NextResponse.json(
