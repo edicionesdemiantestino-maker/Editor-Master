@@ -5,7 +5,7 @@ import Link from "next/link";
 
 type Site = { id: string; name: string; subdomain: string };
 type Collection = { id: string; name: string; slug: string; site_id: string };
-type Entry = { id: string; data: Record<string, string>; created_at: string };
+type Entry = { id: string; data: Record<string, unknown>; created_at: string };
 
 type Props = {
   sites: Site[];
