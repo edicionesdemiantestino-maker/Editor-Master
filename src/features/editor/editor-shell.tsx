@@ -7,7 +7,10 @@ import type { Canvas } from "fabric";
 import type { EditorDocument } from "@/entities/editor/document-schema";
 import { getProjectAction } from "@/app/actions/project-persistence";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-
+import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
+import { useSnapGuides } from "./hooks/use-snap-guides";
+import { SnapOverlay } from "./canvas/snap-overlay";
+import { useEditorStore } from "./store/editor-store";
 import { EditorCanvas } from "./canvas/editor-canvas";
 import { useFontPreload } from "./fonts/use-font-preload";
 import { MagicErasePanel } from "./magic-erase/magic-erase-panel";
@@ -22,7 +25,6 @@ import {
 
 type EditorShellProps = {
   projectId: string;
-  /** Documento ya hidratado en el servidor (evita refetch si la ruta pasó por `getProjectById`). */
   initialDocument?: EditorDocument;
   canEditProject?: boolean;
 };
@@ -36,6 +38,12 @@ export function EditorShell({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadPending, setLoadPending] = useState(projectId !== "demo");
   useFontPreload();
+
+  const getCanvas = () => fabricCanvasRef.current;
+  useKeyboardShortcuts({ getCanvas });
+  const { guides } = useSnapGuides(getCanvas);
+  const canvasWidth = useEditorStore((s) => s.present.canvas.width);
+  const canvasHeight = useEditorStore((s) => s.present.canvas.height);
 
   useEffect(() => {
     if (projectId === "demo") {
@@ -129,7 +137,6 @@ export function EditorShell({
             Este proyecto está compartido con vos como solo lectura.
           </div>
         ) : null}
-
         {loadError ? (
           <div className="flex flex-wrap items-center gap-3 border-b border-zinc-800 bg-red-950/40 px-4 py-2 text-sm text-red-100">
             <span>{loadError}</span>
@@ -153,11 +160,18 @@ export function EditorShell({
               fabricCanvasGetter={() => fabricCanvasRef.current}
             />
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-zinc-950 p-4">
-              <EditorCanvas
-                onCanvasReady={(c) => {
-                  fabricCanvasRef.current = c;
-                }}
-              />
+              <div className="relative" style={{ lineHeight: 0 }}>
+                <EditorCanvas
+                  onCanvasReady={(c) => {
+                    fabricCanvasRef.current = c;
+                  }}
+                />
+                <SnapOverlay
+                  guides={guides}
+                  canvasWidth={canvasWidth}
+                  canvasHeight={canvasHeight}
+                />
+              </div>
             </div>
           </div>
 
