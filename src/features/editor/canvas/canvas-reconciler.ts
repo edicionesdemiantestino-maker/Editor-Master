@@ -8,7 +8,10 @@ import {
   applyCanvasLayoutToFabric,
   applyElementModelToFabricObject,
   fabricImageSrcMatches,
+  invalidateAllFabricSnapshots,
 } from "./model-to-fabric";
+
+import { useEditorStore } from "../store/editor-store";
 import { createFabricObjectForElement } from "./object-factory";
 
 export type ReconcileOptions = {
@@ -36,6 +39,11 @@ export async function reconcileFabricWithDocument(
   canvas.renderOnAddRemove = false;
 
   try {
+    const isHistoryOp = useEditorStore?.getState?.()?.isApplyingHistory ?? false;
+    if (isHistoryOp) {
+      invalidateAllFabricSnapshots(canvas);
+    }
+
     applyCanvasLayoutToFabric(canvas, {
       width: board.width,
       height: board.height,
