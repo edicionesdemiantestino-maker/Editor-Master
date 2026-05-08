@@ -3,7 +3,7 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Canvas } from "fabric";
-
+import { ImageEffectsPanel } from "./canvas/image-effects-panel";
 import type { EditorDocument } from "@/entities/editor/document-schema";
 import { getProjectAction } from "@/app/actions/project-persistence";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -170,11 +170,17 @@ export function EditorShell({
           </div>
 
           <aside className="min-h-0 w-full shrink-0 overflow-y-auto border-t border-zinc-800 bg-zinc-900 lg:w-[320px] lg:border-l lg:border-t-0">
-            <div className="border-b border-zinc-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-              Herramientas e inspector
-            </div>
-            <MagicErasePanel getCanvas={() => fabricCanvasRef.current} />
-          </aside>
+  <div className="border-b border-zinc-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+    Herramientas e inspector
+  </div>
+  <MagicErasePanel getCanvas={() => fabricCanvasRef.current} />
+  <div className="border-t border-zinc-800">
+    <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+      Efectos de imagen
+    </div>
+    <ImageEffectsPanel />
+  </div>
+</aside>
         </div>
       </div>
     </EditorPersistenceProvider>

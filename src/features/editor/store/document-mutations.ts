@@ -411,7 +411,66 @@ export function applyFabricTextProps(
   }
   return next;
 }
+// ── Reordenar capas ───────────────────────────────────────────
 
+export function reorderElementInDocument(
+  doc: EditorDocument,
+  id: ElementId,
+  direction: "up" | "down" | "front" | "back",
+): EditorDocument {
+  const elements = [...doc.canvas.elements];
+  const idx = elements.findIndex((e) => e.id === id);
+  if (idx === -1) return doc;
+
+  let newIdx = idx;
+  if (direction === "up") newIdx = Math.min(elements.length - 1, idx + 1);
+  if (direction === "down") newIdx = Math.max(0, idx - 1);
+  if (direction === "front") newIdx = elements.length - 1;
+  if (direction === "back") newIdx = 0;
+
+  if (newIdx === idx) return doc;
+
+  const el = elements.splice(idx, 1)[0]!;
+  elements.splice(newIdx, 0, el);
+
+  return { ...doc, canvas: { ...doc.canvas, elements } };
+}
+
+export function moveElementToIndexInDocument(
+  doc: EditorDocument,
+  id: ElementId,
+  targetIndex: number,
+): EditorDocument {
+  const elements = [...doc.canvas.elements];
+  const idx = elements.findIndex((e) => e.id === id);
+  if (idx === -1) return doc;
+
+  const clamped = Math.max(0, Math.min(elements.length - 1, targetIndex));
+  if (clamped === idx) return doc;
+
+  const el = elements.splice(idx, 1)[0]!;
+  elements.splice(clamped, 0, el);
+
+  return { ...doc, canvas: { ...doc.canvas, elements } };
+}
+
+export function toggleElementLockInDocument(
+  doc: EditorDocument,
+  id: ElementId,
+): EditorDocument {
+  return updateElementInDocument(doc, id, {
+    locked: !doc.canvas.elements.find((e) => e.id === id)?.locked,
+  } as Partial<CanvasElement>);
+}
+
+export function toggleElementVisibilityInDocument(
+  doc: EditorDocument,
+  id: ElementId,
+): EditorDocument {
+  return updateElementInDocument(doc, id, {
+    visible: !doc.canvas.elements.find((e) => e.id === id)?.visible,
+  } as Partial<CanvasElement>);
+}
 function mapFabricTextAlignToModel(
   align: string,
 ): TextElement["textAlign"] | null {
