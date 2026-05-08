@@ -1,29 +1,34 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useEditorStore } from "../store/editor-store";
 import { isImageElement } from "@/entities/editor/element-guards";
 import type { ImageElement } from "@/entities/editor/document-schema";
 import type { ImageEffectsState } from "@/entities/editor/image-effects";
+import { createDefaultImageEffects } from "@/entities/editor/image-effects";
+
+type EffectKey = keyof Omit<ImageEffectsState, "version">;
 
 type EffectSliderProps = {
   label: string;
+  effectKey: EffectKey;
   value: number;
   min: number;
   max: number;
   step?: number;
   defaultValue: number;
-  onChange: (v: number) => void;
+  onCommit: (key: EffectKey, value: number) => void;
 };
 
 function EffectSlider({
   label,
+  effectKey,
   value,
   min,
   max,
   step = 1,
   defaultValue,
-  onChange,
+  onCommit,
 }: EffectSliderProps) {
   const isModified = Math.abs(value - defaultValue) > 0.01;
 
@@ -35,7 +40,7 @@ function EffectSlider({
           {isModified && (
             <button
               type="button"
-              onClick={() => onChange(defaultValue)}
+              onClick={() => onCommit(effectKey, defaultValue)}
               className="text-[9px] text-zinc-600 hover:text-indigo-400"
               title="Resetear"
             >
@@ -53,143 +58,55 @@ function EffectSlider({
         max={max}
         step={step}
         value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
+        onChange={(e) => onCommit(effectKey, parseFloat(e.target.value))}
         className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
       />
     </div>
   );
 }
 
-const BLEND_PRESETS = [
-  {
-    id: "original",
-    label: "Original",
-    effects: {
-      blur: 0,
-      brightness: 0,
-      contrast: 0,
-      saturation: 0,
-      grayscale: 0,
-      sepia: 0,
-      pixelate: 1,
-      hueRotation: 0,
-      noise: 0,
-      opacity: 1,
-    },
-  },
+const PRESETS: {
+  id: string;
+  label: string;
+  effects: Partial<Omit<ImageEffectsState, "version">>;
+}[] = [
+  { id: "original", label: "Original", effects: {} },
   {
     id: "vivid",
     label: "Vívido",
-    effects: {
-      blur: 0,
-      brightness: 15,
-      contrast: 20,
-      saturation: 40,
-      grayscale: 0,
-      sepia: 0,
-      pixelate: 1,
-      hueRotation: 0,
-      noise: 0,
-      opacity: 1,
-    },
+    effects: { brightness: 15, contrast: 20, saturation: 40 },
   },
   {
     id: "matte",
     label: "Mate",
-    effects: {
-      blur: 0,
-      brightness: 10,
-      contrast: -15,
-      saturation: -20,
-      grayscale: 0,
-      sepia: 0,
-      pixelate: 1,
-      hueRotation: 0,
-      noise: 15,
-      opacity: 1,
-    },
+    effects: { brightness: 10, contrast: -15, saturation: -20, noise: 15 },
   },
   {
     id: "noir",
     label: "Noir",
-    effects: {
-      blur: 0,
-      brightness: -10,
-      contrast: 30,
-      saturation: -100,
-      grayscale: 100,
-      sepia: 0,
-      pixelate: 1,
-      hueRotation: 0,
-      noise: 8,
-      opacity: 1,
-    },
+    effects: { brightness: -10, contrast: 30, grayscale: 100, noise: 8 },
   },
   {
     id: "sepia",
     label: "Sépia",
-    effects: {
-      blur: 0,
-      brightness: 5,
-      contrast: 0,
-      saturation: -30,
-      grayscale: 0,
-      sepia: 80,
-      pixelate: 1,
-      hueRotation: 0,
-      noise: 5,
-      opacity: 1,
-    },
+    effects: { brightness: 5, saturation: -30, sepia: 80, noise: 5 },
   },
   {
     id: "dreamy",
     label: "Dreamy",
-    effects: {
-      blur: 3,
-      brightness: 15,
-      contrast: -10,
-      saturation: 20,
-      grayscale: 0,
-      sepia: 10,
-      pixelate: 1,
-      hueRotation: 0,
-      noise: 0,
-      opacity: 0.92,
-    },
+    effects: { blur: 3, brightness: 15, contrast: -10, saturation: 20, sepia: 10 },
   },
   {
     id: "pixel",
     label: "Pixel",
-    effects: {
-      blur: 0,
-      brightness: 0,
-      contrast: 10,
-      saturation: 0,
-      grayscale: 0,
-      sepia: 0,
-      pixelate: 12,
-      hueRotation: 0,
-      noise: 0,
-      opacity: 1,
-    },
+    effects: { pixelate: 12, contrast: 10 },
   },
   {
     id: "cold",
     label: "Frío",
-    effects: {
-      blur: 0,
-      brightness: 0,
-      contrast: 5,
-      saturation: -10,
-      grayscale: 0,
-      sepia: 0,
-      pixelate: 1,
-      hueRotation: 200,
-      noise: 0,
-      opacity: 1,
-    },
+    effects: { contrast: 5, saturation: -10, hueRotation: 200 },
   },
-] as const;
+];
 
 export function ImageEffectsPanel() {
   const present = useEditorStore((s) => s.present);
@@ -201,6 +118,51 @@ export function ImageEffectsPanel() {
     return el && isImageElement(el) ? el : null;
   }, [present.canvas.elements, selectedIds]);
 
+  const commitEffect = useCallback(
+    (key: EffectKey, value: number, recordHistory = true) => {
+      if (!selectedImage) return;
+      const current = selectedImage.effects as ImageEffectsState;
+      useEditorStore.getState().updateElement(
+        selectedImage.id,
+        {
+          effects: {
+            ...current,
+            [key]: value,
+          },
+        } as Partial<ImageElement>,
+        { recordHistory },
+      );
+    },
+    [selectedImage],
+  );
+
+  const applyPreset = useCallback(
+    (preset: (typeof PRESETS)[number]) => {
+      if (!selectedImage) return;
+      const defaults = createDefaultImageEffects();
+      useEditorStore.getState().updateElement(
+        selectedImage.id,
+        {
+          effects: {
+            ...defaults,
+            ...preset.effects,
+          },
+        } as Partial<ImageElement>,
+        { recordHistory: true },
+      );
+    },
+    [selectedImage],
+  );
+
+  const resetAll = useCallback(() => {
+    if (!selectedImage) return;
+    useEditorStore.getState().updateElement(
+      selectedImage.id,
+      { effects: createDefaultImageEffects() } as Partial<ImageElement>,
+      { recordHistory: true },
+    );
+  }, [selectedImage]);
+
   if (!selectedImage) {
     return (
       <div className="p-4">
@@ -211,66 +173,17 @@ export function ImageEffectsPanel() {
     );
   }
 
-  const effects = selectedImage.effects as ImageEffectsState & {
-    blur?: number;
-    brightness?: number;
-    contrast?: number;
-    saturation?: number;
-    grayscale?: number;
-    sepia?: number;
-    pixelate?: number;
-    hueRotation?: number;
-    noise?: number;
-  };
-
-  const commitEffect = (patch: Partial<ImageEffectsState>) => {
-    useEditorStore.getState().updateElement(
-      selectedImage.id,
-      {
-        effects: { ...effects, ...patch },
-      } as Partial<ImageElement>,
-      { recordHistory: false },
-    );
-  };
-
-  const commitEffectFinal = (patch: Partial<ImageEffectsState>) => {
-    useEditorStore.getState().updateElement(
-      selectedImage.id,
-      {
-        effects: { ...effects, ...patch },
-      } as Partial<ImageElement>,
-      { recordHistory: true },
-    );
-  };
-
-  const applyPreset = (preset: (typeof BLEND_PRESETS)[number]) => {
-    useEditorStore.getState().updateElement(
-      selectedImage.id,
-      { effects: { ...effects, ...preset.effects } } as Partial<ImageElement>,
-      { recordHistory: true },
-    );
-  };
-
-  const resetAll = () => {
-    useEditorStore.getState().updateElement(
-      selectedImage.id,
-      {
-        effects: {
-          ...effects,
-          blur: 0,
-          brightness: 0,
-          contrast: 0,
-          saturation: 0,
-          grayscale: 0,
-          sepia: 0,
-          pixelate: 1,
-          hueRotation: 0,
-          noise: 0,
-          opacity: 1,
-        },
-      } as Partial<ImageElement>,
-      { recordHistory: true },
-    );
+  const effects = selectedImage.effects as ImageEffectsState;
+  const safeEffects = {
+    brightness: effects.brightness ?? 0,
+    contrast: effects.contrast ?? 0,
+    saturation: effects.saturation ?? 0,
+    blur: effects.blur ?? 0,
+    grayscale: effects.grayscale ?? 0,
+    sepia: effects.sepia ?? 0,
+    pixelate: effects.pixelate ?? 1,
+    hueRotation: effects.hueRotation ?? 0,
+    noise: effects.noise ?? 0,
   };
 
   return (
@@ -290,7 +203,7 @@ export function ImageEffectsPanel() {
           </button>
         </div>
         <div className="grid grid-cols-4 gap-1">
-          {BLEND_PRESETS.map((preset) => (
+          {PRESETS.map((preset) => (
             <button
               key={preset.id}
               type="button"
@@ -308,38 +221,18 @@ export function ImageEffectsPanel() {
         <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
           Luz y color
         </p>
-        <EffectSlider
-          label="Brillo"
-          value={effects.brightness ?? 0}
-          min={-100}
-          max={100}
-          defaultValue={0}
-          onChange={(v) => commitEffect({ brightness: v } as any)}
-        />
-        <EffectSlider
-          label="Contraste"
-          value={effects.contrast ?? 0}
-          min={-100}
-          max={100}
-          defaultValue={0}
-          onChange={(v) => commitEffect({ contrast: v } as any)}
-        />
-        <EffectSlider
-          label="Saturación"
-          value={effects.saturation ?? 0}
-          min={-100}
-          max={100}
-          defaultValue={0}
-          onChange={(v) => commitEffect({ saturation: v } as any)}
-        />
-        <EffectSlider
-          label="Tono (Hue)"
-          value={effects.hueRotation ?? 0}
-          min={0}
-          max={360}
-          defaultValue={0}
-          onChange={(v) => commitEffect({ hueRotation: v } as any)}
-        />
+        <EffectSlider label="Brillo" effectKey="brightness"
+          value={safeEffects.brightness} min={-100} max={100} defaultValue={0}
+          onCommit={commitEffect} />
+        <EffectSlider label="Contraste" effectKey="contrast"
+          value={safeEffects.contrast} min={-100} max={100} defaultValue={0}
+          onCommit={commitEffect} />
+        <EffectSlider label="Saturación" effectKey="saturation"
+          value={safeEffects.saturation} min={-100} max={100} defaultValue={0}
+          onCommit={commitEffect} />
+        <EffectSlider label="Tono (Hue)" effectKey="hueRotation"
+          value={safeEffects.hueRotation} min={0} max={360} defaultValue={0}
+          onCommit={commitEffect} />
       </div>
 
       {/* Filtros */}
@@ -347,22 +240,12 @@ export function ImageEffectsPanel() {
         <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
           Filtros
         </p>
-        <EffectSlider
-          label="Escala de grises"
-          value={effects.grayscale ?? 0}
-          min={0}
-          max={100}
-          defaultValue={0}
-          onChange={(v) => commitEffect({ grayscale: v } as any)}
-        />
-        <EffectSlider
-          label="Sépia"
-          value={effects.sepia ?? 0}
-          min={0}
-          max={100}
-          defaultValue={0}
-          onChange={(v) => commitEffect({ sepia: v } as any)}
-        />
+        <EffectSlider label="Escala de grises" effectKey="grayscale"
+          value={safeEffects.grayscale} min={0} max={100} defaultValue={0}
+          onCommit={commitEffect} />
+        <EffectSlider label="Sépia" effectKey="sepia"
+          value={safeEffects.sepia} min={0} max={100} defaultValue={0}
+          onCommit={commitEffect} />
       </div>
 
       {/* Efectos especiales */}
@@ -370,45 +253,15 @@ export function ImageEffectsPanel() {
         <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
           Efectos especiales
         </p>
-        <EffectSlider
-          label="Desenfoque"
-          value={effects.blur ?? 0}
-          min={0}
-          max={40}
-          step={0.5}
-          defaultValue={0}
-          onChange={(v) => commitEffect({ blur: v } as any)}
-        />
-        <EffectSlider
-          label="Pixelado"
-          value={effects.pixelate ?? 1}
-          min={1}
-          max={50}
-          defaultValue={1}
-          onChange={(v) => commitEffect({ pixelate: v } as any)}
-        />
-        <EffectSlider
-          label="Ruido / Grain"
-          value={effects.noise ?? 0}
-          min={0}
-          max={100}
-          defaultValue={0}
-          onChange={(v) => commitEffect({ noise: v } as any)}
-        />
-      </div>
-
-      {/* Opacidad */}
-      <div className="p-3">
-        <EffectSlider
-          label="Opacidad"
-          value={(selectedImage.opacity ?? 1) * 100}
-          min={0}
-          max={100}
-          defaultValue={100}
-          onChange={(v) =>
-            commitEffectFinal({ opacity: v / 100 } as any)
-          }
-        />
+        <EffectSlider label="Desenfoque" effectKey="blur"
+          value={safeEffects.blur} min={0} max={40} step={0.5} defaultValue={0}
+          onCommit={commitEffect} />
+        <EffectSlider label="Pixelado" effectKey="pixelate"
+          value={safeEffects.pixelate} min={1} max={50} defaultValue={1}
+          onCommit={commitEffect} />
+        <EffectSlider label="Ruido / Grain" effectKey="noise"
+          value={safeEffects.noise} min={0} max={100} defaultValue={0}
+          onCommit={commitEffect} />
       </div>
     </div>
   );
