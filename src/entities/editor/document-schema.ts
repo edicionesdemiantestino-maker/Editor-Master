@@ -43,18 +43,39 @@ export type TextElement = BaseElement & {
   width?: number;
 };
 
+export type BlendMode =
+  | "normal"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "color-dodge"
+  | "color-burn"
+  | "soft-light"
+  | "hard-light"
+  | "difference"
+  | "exclusion"
+  | "luminosity";
+
+export type ImageShadow = {
+  enabled: boolean;
+  color: string;
+  blur: number;
+  offsetX: number;
+  offsetY: number;
+  opacity: number;
+};
+
 export type ImageElement = BaseElement & {
   type: "image";
   src: string;
   naturalWidth: number;
   naturalHeight: number;
-  /**
-   * Si es `true` (defecto), `scaleX` y `scaleY` se sincronizan al transformar
-   * (proporción fija del bitmap escalado).
-   */
   lockAspectRatio: boolean;
-  /** Pipeline de filtros / ajustes (extensible). */
   effects: ImageEffectsState;
+  blendMode?: BlendMode;
+  shadow?: ImageShadow;
   crop?: {
     x: number;
     y: number;

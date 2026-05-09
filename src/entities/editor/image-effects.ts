@@ -16,6 +16,122 @@ export type ImageEffectsState = {
   readonly noise: number;        // 0 a 100, default 0
 };
 
+export type ImagePreset = {
+  id: string;
+  label: string;
+  category: "mood" | "color" | "style" | "vintage";
+  effects: Partial<Omit<ImageEffectsState, "version">>;
+};
+
+export const IMAGE_PRESETS: ImagePreset[] = [
+  // ── Original ──────────────────────────────────────────────
+  { id: "original", label: "Original", category: "style", effects: {} },
+
+  // ── Mood ──────────────────────────────────────────────────
+  {
+    id: "cinematic",
+    label: "Cinematic",
+    category: "mood",
+    effects: { brightness: -8, contrast: 25, saturation: -15, noise: 5 },
+  },
+  {
+    id: "noir",
+    label: "Noir",
+    category: "mood",
+    effects: { brightness: -10, contrast: 35, grayscale: 100, noise: 8 },
+  },
+  {
+    id: "dreamy",
+    label: "Dreamy",
+    category: "mood",
+    effects: { blur: 2, brightness: 18, contrast: -12, saturation: 15, sepia: 8 },
+  },
+  {
+    id: "editorial",
+    label: "Editorial",
+    category: "mood",
+    effects: { brightness: 5, contrast: 18, saturation: -8 },
+  },
+
+  // ── Color ─────────────────────────────────────────────────
+  {
+    id: "vivid",
+    label: "Vívido",
+    category: "color",
+    effects: { brightness: 12, contrast: 20, saturation: 45 },
+  },
+  {
+    id: "pastel",
+    label: "Pastel",
+    category: "color",
+    effects: { brightness: 22, contrast: -18, saturation: -25 },
+  },
+  {
+    id: "cold",
+    label: "Frío",
+    category: "color",
+    effects: { contrast: 8, saturation: -12, hueRotation: 195 },
+  },
+  {
+    id: "warm",
+    label: "Cálido",
+    category: "color",
+    effects: { brightness: 8, contrast: 5, saturation: 15, hueRotation: 15 },
+  },
+  {
+    id: "neon",
+    label: "Neon",
+    category: "color",
+    effects: { brightness: -5, contrast: 30, saturation: 80, hueRotation: 270 },
+  },
+
+  // ── Style ─────────────────────────────────────────────────
+  {
+    id: "matte",
+    label: "Mate",
+    category: "style",
+    effects: { brightness: 10, contrast: -18, saturation: -22, noise: 12 },
+  },
+  {
+    id: "luxury",
+    label: "Luxury",
+    category: "style",
+    effects: { brightness: -5, contrast: 15, saturation: -30, sepia: 15 },
+  },
+  {
+    id: "startup",
+    label: "Startup",
+    category: "style",
+    effects: { brightness: 10, contrast: 12, saturation: 20 },
+  },
+  {
+    id: "pixel",
+    label: "Pixel",
+    category: "style",
+    effects: { pixelate: 12, contrast: 10 },
+  },
+
+  // ── Vintage ───────────────────────────────────────────────
+  {
+    id: "sepia",
+    label: "Sépia",
+    category: "vintage",
+    effects: { brightness: 5, saturation: -30, sepia: 80, noise: 5 },
+  },
+  {
+    id: "retro",
+    label: "Retro",
+    category: "vintage",
+    effects: { brightness: 8, contrast: -10, saturation: -20, sepia: 35, noise: 18 },
+  },
+  {
+    id: "faded",
+    label: "Faded",
+    category: "vintage",
+    effects: { brightness: 15, contrast: -25, saturation: -35, noise: 8 },
+  },
+];
+
 export function createDefaultImageEffects(): ImageEffectsState {
   return {
     version: 2,
@@ -36,7 +152,6 @@ export function normalizeImageEffects(raw: unknown): ImageEffectsState {
   if (!raw || typeof raw !== "object") return defaults;
   const r = raw as Record<string, unknown>;
 
-  // Migrar desde versión 1 (pipeline array) → versión 2 (flat object)
   if (r.version === 1 || Array.isArray(r.pipeline)) {
     return defaults;
   }
