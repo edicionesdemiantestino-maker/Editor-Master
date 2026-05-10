@@ -3,7 +3,7 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Canvas } from "fabric";
-import { ImageEffectsPanel } from "./canvas/image-effects-panel";
+
 import type { EditorDocument } from "@/entities/editor/document-schema";
 import { getProjectAction } from "@/app/actions/project-persistence";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -11,13 +11,16 @@ import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useSnapGuides } from "./hooks/use-snap-guides";
 import { SnapOverlay } from "./canvas/snap-overlay";
 import { BleedOverlay, useBleedOverlayStore } from "./canvas/bleed-overlay";
+import { WorkspaceBackground } from "./canvas/workspace-background";
 import { useEditorStore } from "./store/editor-store";
 import { EditorCanvas } from "./canvas/editor-canvas";
 import { useFontPreload } from "./fonts/use-font-preload";
-import { MagicErasePanel } from "./magic-erase/magic-erase-panel";
 import { EditorLeftSidebar } from "./shell/editor-left-sidebar";
 import { EditorPersistenceProvider } from "./persistence/editor-persistence-context";
 import { EditorToolbar } from "./toolbar/editor-toolbar";
+import { ContextInspector } from "./shell/context-inspector";
+import { CommandMenu } from "./shell/command-menu";
+import { BottomBar } from "./shell/bottom-bar";
 import {
   loadEditorDocument,
   resetEditorForProject,
@@ -39,6 +42,10 @@ export function EditorShell({
   const fabricCanvasRef = useRef<Canvas | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadPending, setLoadPending] = useState(projectId !== "demo");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+
   useFontPreload();
 
   const getCanvas = () => fabricCanvasRef.current;
@@ -46,6 +53,7 @@ export function EditorShell({
   const { guides } = useSnapGuides(getCanvas);
   const canvasWidth = useEditorStore((s) => s.present.canvas.width);
   const canvasHeight = useEditorStore((s) => s.present.canvas.height);
+  const elementCount = useEditorStore((s) => s.present.canvas.elements.length);
 
   const {
     showBleed,
@@ -54,6 +62,18 @@ export function EditorShell({
     bleedMm,
     marginMm,
   } = useBleedOverlayStore();
+
+  // ── Cmd+K para command menu ───────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (projectId === "demo") {
@@ -117,7 +137,16 @@ export function EditorShell({
         return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
       }}
     >
+      {/* Command menu */}
+      <CommandMenu
+        open={commandOpen}
+        onClose={() => setCommandOpen(false)}
+        fabricCanvasGetter={getCanvas}
+        onExport={() => setExportOpen(true)}
+      />
+
       <div className="flex h-full min-h-0 flex-1 flex-col bg-zinc-950 text-zinc-100">
+        {/* Banners */}
         {loadPending && (
           <div className="border-b border-zinc-800 bg-amber-950/50 px-4 py-2 text-sm text-amber-100">
             Cargando proyecto…
@@ -136,18 +165,66 @@ export function EditorShell({
           </div>
         )}
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-          <aside className="hidden min-h-0 w-[260px] shrink-0 overflow-hidden border-r border-zinc-800 lg:block">
-            <EditorLeftSidebar projectId={projectId} />
-          </aside>
+        {/* Toolbar */}
+        <EditorToolbar
+          projectId={projectId}
+          fabricCanvasGetter={getCanvas}
+          onOpenCommandMenu={() => setCommandOpen(true)}
+        />
 
-          <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
-            <EditorToolbar
+        {/* Main layout */}
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+
+          {/* Left sidebar — colapsable */}
+          <div
+            className={`hidden shrink-0 overflow-hidden border-r border-white/5 transition-all duration-200 lg:block ${
+              sidebarCollapsed ? "w-12" : "w-[260px]"
+            }`}
+          >
+            <EditorLeftSidebar
               projectId={projectId}
-              fabricCanvasGetter={() => fabricCanvasRef.current}
+              collapsed={sidebarCollapsed}
+              onToggle={() => setSidebarCollapsed((v) => !v)}
             />
-            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-zinc-950 p-4">
-              <div className="relative" style={{ lineHeight: 0 }}>
+          </div>
+
+          {/* Canvas workspace */}
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {/* Grid background */}
+            <WorkspaceBackground showGrid />
+
+            {/* Canvas area */}
+            <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto p-8">
+              {/* Empty state */}
+              {elementCount === 0 && !loadPending && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/8 bg-white/3 text-3xl">
+                      ✦
+                    </div>
+                    <p className="text-sm font-medium text-zinc-500">
+                      Canvas vacío
+                    </p>
+                    <p className="text-xs text-zinc-700">
+                      Usá{" "}
+                      <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[10px]">
+                        ⌘K
+                      </kbd>{" "}
+                      para insertar elementos
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Document con sombra premium */}
+              <div
+                className="relative shrink-0"
+                style={{
+                  lineHeight: 0,
+                  filter:
+                    "drop-shadow(0 0 0 1px rgba(255,255,255,0.06)) drop-shadow(0 20px 60px rgba(0,0,0,0.6)) drop-shadow(0 4px 16px rgba(0,0,0,0.4))",
+                }}
+              >
                 <EditorCanvas
                   onCanvasReady={(c) => { fabricCanvasRef.current = c; }}
                 />
@@ -167,20 +244,30 @@ export function EditorShell({
                 />
               </div>
             </div>
+
+            {/* Bottom bar */}
+            <BottomBar getCanvas={getCanvas} />
           </div>
 
-          <aside className="min-h-0 w-full shrink-0 overflow-y-auto border-t border-zinc-800 bg-zinc-900 lg:w-[320px] lg:border-l lg:border-t-0">
-  <div className="border-b border-zinc-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-    Herramientas e inspector
-  </div>
-  <MagicErasePanel getCanvas={() => fabricCanvasRef.current} />
-  <div className="border-t border-zinc-800">
-    <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-      Efectos de imagen
-    </div>
-    <ImageEffectsPanel />
-  </div>
-</aside>
+          {/* Right inspector — context-aware */}
+          <div className="hidden min-h-0 w-[300px] shrink-0 overflow-hidden border-l border-white/5 bg-zinc-950 lg:flex lg:flex-col">
+            <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-4 py-2.5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+                Inspector
+              </span>
+              <button
+                type="button"
+                onClick={() => setCommandOpen(true)}
+                className="flex items-center gap-1.5 rounded-md border border-white/8 bg-white/3 px-2 py-1 text-[10px] text-zinc-500 transition hover:bg-white/6 hover:text-zinc-300"
+                title="Abrir command menu (⌘K)"
+              >
+                <span>⌘K</span>
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ContextInspector getCanvas={getCanvas} />
+            </div>
+          </div>
         </div>
       </div>
     </EditorPersistenceProvider>

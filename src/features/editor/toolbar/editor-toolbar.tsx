@@ -16,11 +16,13 @@ import { useBleedOverlayStore } from "../canvas/bleed-overlay";
 type EditorToolbarProps = {
   fabricCanvasGetter: () => import("fabric").Canvas | null;
   projectId: string;
+  onOpenCommandMenu?: () => void;
 };
 
 export function EditorToolbar({
   fabricCanvasGetter,
   projectId,
+  onOpenCommandMenu,
 }: EditorToolbarProps) {
   const canUndo = useEditorStore((s) => s.past.length > 0);
   const canRedo = useEditorStore((s) => s.future.length > 0);
@@ -49,11 +51,19 @@ export function EditorToolbar({
       />
 
       <Link
-        href="/dashboard/projects"
-        className="mr-1 text-sm text-zinc-400 underline-offset-2 hover:text-white hover:underline"
-      >
-        Proyectos
-      </Link>
+  href="/dashboard/projects"
+  className="mr-1 text-sm text-zinc-400 underline-offset-2 hover:text-white hover:underline"
+>
+  Proyectos
+</Link>
+<button
+  type="button"
+  onClick={onOpenCommandMenu}
+  className="flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:border-zinc-500 hover:text-zinc-200"
+  title="Command menu (⌘K)"
+>
+  <span>⌘K</span>
+</button>
 
       {/* Selector de tamaño */}
       <CanvasSizePicker />
