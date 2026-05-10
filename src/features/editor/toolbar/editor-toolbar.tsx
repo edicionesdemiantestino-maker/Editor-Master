@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ExportModal } from "@/features/editor/export/ui";
-import { alignActiveTextObject, duplicateActiveObject } from "../canvas/fabric-toolbar-actions";
+import { duplicateActiveObject } from "../canvas/fabric-toolbar-actions";
 import { createDefaultTextElement } from "../store/document-mutations";
 import { useEditorStore } from "../store/editor-store";
 import { AddImageControl } from "./add-image-control";
@@ -12,6 +12,8 @@ import { EditorToolbarCloudSave } from "./editor-toolbar-cloud-save";
 import { CreditsBadge } from "@/features/billing/credits/credits-badge";
 import { CanvasSizePicker } from "./canvas-size-picker";
 import { useBleedOverlayStore } from "../canvas/bleed-overlay";
+import { AlignmentToolbar } from "./alignment-toolbar";
+import { ShapePicker } from "./shape-picker";
 
 type EditorToolbarProps = {
   fabricCanvasGetter: () => import("fabric").Canvas | null;
@@ -43,36 +45,41 @@ export function EditorToolbar({
   } = useBleedOverlayStore();
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 bg-zinc-900 px-4 py-3">
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-white/5 bg-zinc-950/95 px-3 py-2 backdrop-blur">
       <ExportModal
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         getCanvas={fabricCanvasGetter}
       />
 
+      {/* Nav */}
       <Link
-  href="/dashboard/projects"
-  className="mr-1 text-sm text-zinc-400 underline-offset-2 hover:text-white hover:underline"
->
-  Proyectos
-</Link>
-<button
-  type="button"
-  onClick={onOpenCommandMenu}
-  className="flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:border-zinc-500 hover:text-zinc-200"
-  title="Command menu (⌘K)"
->
-  <span>⌘K</span>
-</button>
-
-      {/* Selector de tamaño */}
-      <CanvasSizePicker />
-
-      <div className="mx-1 h-6 w-px bg-zinc-700" aria-hidden />
+        href="/dashboard/projects"
+        className="mr-1 text-xs text-zinc-600 underline-offset-2 hover:text-zinc-300 hover:underline"
+      >
+        ← Proyectos
+      </Link>
 
       <button
         type="button"
-        className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white"
+        onClick={onOpenCommandMenu}
+        className="flex items-center gap-1.5 rounded-md border border-white/8 bg-white/5 px-2 py-1.5 text-[10px] text-zinc-500 transition hover:bg-white/8 hover:text-zinc-300"
+        title="Command menu (⌘K)"
+      >
+        ⌘K
+      </button>
+
+      <div className="mx-1 h-5 w-px bg-white/8" aria-hidden />
+
+      {/* Canvas size */}
+      <CanvasSizePicker />
+
+      <div className="mx-1 h-5 w-px bg-white/8" aria-hidden />
+
+      {/* Insert */}
+      <button
+        type="button"
+        className="rounded-md border border-white/10 bg-white/8 px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:bg-white/12 hover:text-white"
         onClick={() => {
           const s = useEditorStore.getState();
           s.addElement(createDefaultTextElement(s.present));
@@ -80,23 +87,30 @@ export function EditorToolbar({
       >
         + Texto
       </button>
-      <AddImageControl />
 
-      <div className="mx-1 h-6 w-px bg-zinc-700" aria-hidden />
+      <AddImageControl />
+      <ShapePicker getCanvas={fabricCanvasGetter} />
+
+      <div className="mx-1 h-5 w-px bg-white/8" aria-hidden />
+
+      {/* Alignment */}
+      <AlignmentToolbar getCanvas={fabricCanvasGetter} />
+
+      <div className="mx-1 h-5 w-px bg-white/8" aria-hidden />
 
       {/* Guías de impresión */}
       <div className="relative">
         <button
           type="button"
           onClick={() => setShowGuides((v) => !v)}
-          className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition ${
+          className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-medium transition ${
             showBleed || showMargin
-              ? "border-amber-500/50 bg-amber-500/10 text-amber-300"
-              : "border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+              : "border-white/8 bg-white/5 text-zinc-500 hover:text-zinc-300"
           }`}
           title="Guías de impresión"
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
             <rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" strokeWidth="1"/>
             <rect x="2.5" y="2.5" width="7" height="7" rx="0.5" stroke="currentColor" strokeWidth="0.7" strokeDasharray="1.5 1"/>
           </svg>
@@ -108,7 +122,6 @@ export function EditorToolbar({
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
               Guías de impresión
             </p>
-
             <label className="flex cursor-pointer items-center justify-between py-1">
               <span className="text-xs text-zinc-300">Sangrado</span>
               <input
@@ -118,7 +131,6 @@ export function EditorToolbar({
                 className="accent-amber-500"
               />
             </label>
-
             {showBleed && (
               <div className="mb-1 flex items-center gap-2 pl-2">
                 <span className="text-[10px] text-zinc-500">mm</span>
@@ -132,9 +144,8 @@ export function EditorToolbar({
                 />
               </div>
             )}
-
             <label className="flex cursor-pointer items-center justify-between py-1">
-              <span className="text-xs text-zinc-300">Margen (zona segura)</span>
+              <span className="text-xs text-zinc-300">Margen</span>
               <input
                 type="checkbox"
                 checked={showMargin}
@@ -142,7 +153,6 @@ export function EditorToolbar({
                 className="accent-indigo-500"
               />
             </label>
-
             {showMargin && (
               <div className="mb-1 flex items-center gap-2 pl-2">
                 <span className="text-[10px] text-zinc-500">mm</span>
@@ -156,7 +166,6 @@ export function EditorToolbar({
                 />
               </div>
             )}
-
             <label className="flex cursor-pointer items-center justify-between py-1">
               <span className="text-xs text-zinc-300">Marcas de corte</span>
               <input
@@ -170,74 +179,56 @@ export function EditorToolbar({
         )}
       </div>
 
-      <div className="mx-1 h-6 w-px bg-zinc-700" aria-hidden />
+      <div className="mx-1 h-5 w-px bg-white/8" aria-hidden />
+
+      {/* Cloud save */}
       <EditorToolbarCloudSave projectId={projectId} />
       <CreditsBadge />
-      <div className="mx-1 h-6 w-px bg-zinc-700" aria-hidden />
 
+      <div className="mx-1 h-5 w-px bg-white/8" aria-hidden />
+
+      {/* History */}
       <button
         type="button"
-        className="rounded-md border border-zinc-600 px-3 py-1.5 text-sm text-zinc-200 disabled:opacity-40"
+        className="rounded-md border border-white/8 px-2.5 py-1.5 text-xs text-zinc-400 disabled:opacity-30 hover:border-white/15 hover:text-zinc-200"
         disabled={!canUndo}
         onClick={() => useEditorStore.getState().undo()}
       >
-        Deshacer
+        ↩ Deshacer
       </button>
       <button
         type="button"
-        className="rounded-md border border-zinc-600 px-3 py-1.5 text-sm text-zinc-200 disabled:opacity-40"
+        className="rounded-md border border-white/8 px-2.5 py-1.5 text-xs text-zinc-400 disabled:opacity-30 hover:border-white/15 hover:text-zinc-200"
         disabled={!canRedo}
         onClick={() => useEditorStore.getState().redo()}
       >
-        Rehacer
+        ↪ Rehacer
       </button>
 
-      <div className="mx-1 h-6 w-px bg-zinc-700" aria-hidden />
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-        Alinear
-      </span>
-      <button
-        type="button"
-        className="rounded-md border border-zinc-600 px-2 py-1.5 text-xs text-zinc-200"
-        onClick={() => alignActiveTextObject(fabricCanvasGetter(), "left")}
-      >
-        Izq.
-      </button>
-      <button
-        type="button"
-        className="rounded-md border border-zinc-600 px-2 py-1.5 text-xs text-zinc-200"
-        onClick={() => alignActiveTextObject(fabricCanvasGetter(), "center")}
-      >
-        Centro
-      </button>
-      <button
-        type="button"
-        className="rounded-md border border-zinc-600 px-2 py-1.5 text-xs text-zinc-200"
-        onClick={() => alignActiveTextObject(fabricCanvasGetter(), "right")}
-      >
-        Der.
-      </button>
+      <div className="mx-1 h-5 w-px bg-white/8" aria-hidden />
 
-      <div className="mx-1 h-6 w-px bg-zinc-700" aria-hidden />
+      {/* Duplicate */}
       <button
         type="button"
-        className="rounded-md border border-zinc-600 px-3 py-1.5 text-sm text-zinc-200"
+        className="rounded-md border border-white/8 px-2.5 py-1.5 text-xs text-zinc-400 hover:border-white/15 hover:text-zinc-200"
         onClick={() =>
           void duplicateActiveObject(fabricCanvasGetter()).catch(() => {
             window.alert("No se pudo duplicar la selección.");
           })
         }
       >
-        Duplicar
+        ⧉ Duplicar
       </button>
 
-      <div className="mx-1 h-6 w-px bg-zinc-700" aria-hidden />
+      <div className="mx-1 h-5 w-px bg-white/8" aria-hidden />
+
+      {/* Export */}
       <button
         type="button"
-        className="rounded-md border border-sky-500/60 bg-sky-500/15 px-4 py-1.5 text-sm font-semibold text-sky-100 hover:bg-sky-500/25"
+        className="rounded-md border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300 transition hover:bg-indigo-500/20 hover:text-indigo-200"
         onClick={() => setExportOpen(true)}
       >
-        Exportar
+        ↗ Exportar
       </button>
     </div>
   );
