@@ -4,23 +4,51 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Canvas } from "fabric";
 
+import { useZoomPan } from "./hooks/use-zoom-pan";
+
+import { FloatingToolbar } from "./shell/floating-toolbar";
+
+import {
+  FocusModeButton,
+  FocusModeOverlay,
+  useFocusMode,
+  useFocusModeShortcut,
+} from "./shell/focus-mode";
+
 import type { EditorDocument } from "@/entities/editor/document-schema";
 import { getProjectAction } from "@/app/actions/project-persistence";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useSnapGuides } from "./hooks/use-snap-guides";
+
 import { SnapOverlay } from "./canvas/snap-overlay";
-import { BleedOverlay, useBleedOverlayStore } from "./canvas/bleed-overlay";
+
+import {
+  BleedOverlay,
+  useBleedOverlayStore,
+} from "./canvas/bleed-overlay";
+
 import { WorkspaceBackground } from "./canvas/workspace-background";
+
 import { useEditorStore } from "./store/editor-store";
+
 import { EditorCanvas } from "./canvas/editor-canvas";
+
 import { useFontPreload } from "./fonts/use-font-preload";
+
 import { EditorLeftSidebar } from "./shell/editor-left-sidebar";
+
 import { EditorPersistenceProvider } from "./persistence/editor-persistence-context";
+
 import { EditorToolbar } from "./toolbar/editor-toolbar";
+
 import { ContextInspector } from "./shell/context-inspector";
+
 import { CommandMenu } from "./shell/command-menu";
+
 import { BottomBar } from "./shell/bottom-bar";
+
 import {
   loadEditorDocument,
   resetEditorForProject,
@@ -40,20 +68,48 @@ export function EditorShell({
   canEditProject = true,
 }: EditorShellProps) {
   const fabricCanvasRef = useRef<Canvas | null>(null);
+
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [loadPending, setLoadPending] = useState(projectId !== "demo");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const [loadPending, setLoadPending] = useState(
+    projectId !== "demo",
+  );
+
+  const [sidebarCollapsed, setSidebarCollapsed] =
+    useState(false);
+
   const [commandOpen, setCommandOpen] = useState(false);
+
   const [exportOpen, setExportOpen] = useState(false);
 
   useFontPreload();
 
   const getCanvas = () => fabricCanvasRef.current;
+
   useKeyboardShortcuts({ getCanvas });
+
+  useFocusModeShortcut();
+
+  const { active: focusMode } = useFocusMode();
+
+  useZoomPan({
+    getCanvas,
+    enabled: true,
+  });
+
   const { guides } = useSnapGuides(getCanvas);
-  const canvasWidth = useEditorStore((s) => s.present.canvas.width);
-  const canvasHeight = useEditorStore((s) => s.present.canvas.height);
-  const elementCount = useEditorStore((s) => s.present.canvas.elements.length);
+
+  const canvasWidth = useEditorStore(
+    (s) => s.present.canvas.width,
+  );
+
+  const canvasHeight = useEditorStore(
+    (s) => s.present.canvas.height,
+  );
+
+  const elementCount = useEditorStore(
+    (s) => s.present.canvas.elements.length,
+  );
 
   const {
     showBleed,
@@ -71,26 +127,34 @@ export function EditorShell({
         setCommandOpen((v) => !v);
       }
     };
+
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+
+    return () =>
+      window.removeEventListener("keydown", handler);
   }, []);
 
   useEffect(() => {
     if (projectId === "demo") {
       resetEditorForProject("demo");
+
       startTransition(() => {
         setLoadError(null);
         setLoadPending(false);
       });
+
       return;
     }
 
     resetEditorForProject(projectId);
+
     startTransition(() => setLoadError(null));
 
     if (initialDocument) {
       loadEditorDocument(initialDocument);
+
       startTransition(() => setLoadPending(false));
+
       return;
     }
 
@@ -101,26 +165,44 @@ export function EditorShell({
         setLoadError("Supabase no está configurado.");
         setLoadPending(false);
       });
+
       return;
     }
 
     let cancelled = false;
+
     void (async () => {
       try {
         const r = await getProjectAction(projectId);
+
         if (cancelled) return;
-        if (!r.ok) { setLoadError(r.message); return; }
+
+        if (!r.ok) {
+          setLoadError(r.message);
+          return;
+        }
+
         loadEditorDocument(r.document);
+
         setLoadError(null);
       } catch (e) {
         if (!cancelled) {
-          setLoadError(e instanceof Error ? e.message : "Error al cargar.");
+          setLoadError(
+            e instanceof Error
+              ? e.message
+              : "Error al cargar.",
+          );
         }
       } finally {
-        if (!cancelled) setLoadPending(false);
+        if (!cancelled) {
+          setLoadPending(false);
+        }
       }
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [projectId, initialDocument]);
 
   const persistenceReady = !loadPending && !loadError;
@@ -129,12 +211,21 @@ export function EditorShell({
     <EditorPersistenceProvider
       projectId={projectId}
       persistenceReady={persistenceReady}
-      allowCloudPersist={projectId === "demo" ? true : canEditProject}
+      allowCloudPersist={
+        projectId === "demo" ? true : canEditProject
+      }
       getFabricSnapshot={() => {
         const c = fabricCanvasRef.current;
+
         if (!c) return null;
+
         const raw = c.toJSON();
-        return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+
+        return raw &&
+          typeof raw === "object" &&
+          !Array.isArray(raw)
+          ? raw
+          : null;
       }}
     >
       {/* Command menu */}
@@ -152,16 +243,34 @@ export function EditorShell({
             Cargando proyecto…
           </div>
         )}
-        {projectId !== "demo" && !canEditProject && !loadPending && !loadError && (
-          <div className="border-b border-zinc-800 bg-zinc-800/80 px-4 py-2 text-xs text-zinc-300">
-            Este proyecto está compartido como solo lectura.
-          </div>
-        )}
+
+        {projectId !== "demo" &&
+          !canEditProject &&
+          !loadPending &&
+          !loadError && (
+            <div className="border-b border-zinc-800 bg-zinc-800/80 px-4 py-2 text-xs text-zinc-300">
+              Este proyecto está compartido como solo
+              lectura.
+            </div>
+          )}
+
         {loadError && (
           <div className="flex flex-wrap items-center gap-3 border-b border-zinc-800 bg-red-950/40 px-4 py-2 text-sm text-red-100">
             <span>{loadError}</span>
-            <Link href="/login" className="font-medium underline">Ir a ingresar</Link>
-            <Link href="/" className="font-medium underline">Inicio</Link>
+
+            <Link
+              href="/login"
+              className="font-medium underline"
+            >
+              Ir a ingresar
+            </Link>
+
+            <Link
+              href="/"
+              className="font-medium underline"
+            >
+              Inicio
+            </Link>
           </div>
         )}
 
@@ -169,22 +278,27 @@ export function EditorShell({
         <EditorToolbar
           projectId={projectId}
           fabricCanvasGetter={getCanvas}
-          onOpenCommandMenu={() => setCommandOpen(true)}
+          onOpenCommandMenu={() =>
+            setCommandOpen(true)
+          }
         />
 
         {/* Main layout */}
         <div className="flex min-h-0 flex-1 overflow-hidden">
-
           {/* Left sidebar — colapsable */}
           <div
             className={`hidden shrink-0 overflow-hidden border-r border-white/5 transition-all duration-200 lg:block ${
-              sidebarCollapsed ? "w-12" : "w-[260px]"
+              sidebarCollapsed || focusMode
+                ? "w-12"
+                : "w-[260px]"
             }`}
           >
             <EditorLeftSidebar
               projectId={projectId}
               collapsed={sidebarCollapsed}
-              onToggle={() => setSidebarCollapsed((v) => !v)}
+              onToggle={() =>
+                setSidebarCollapsed((v) => !v)
+              }
             />
           </div>
 
@@ -202,9 +316,11 @@ export function EditorShell({
                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/8 bg-white/3 text-3xl">
                       ✦
                     </div>
+
                     <p className="text-sm font-medium text-zinc-500">
                       Canvas vacío
                     </p>
+
                     <p className="text-xs text-zinc-700">
                       Usá{" "}
                       <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[10px]">
@@ -226,18 +342,26 @@ export function EditorShell({
                 }}
               >
                 <EditorCanvas
-                  onCanvasReady={(c) => { fabricCanvasRef.current = c; }}
+                  onCanvasReady={(c) => {
+                    fabricCanvasRef.current = c;
+                  }}
                 />
+
                 <SnapOverlay
                   guides={guides}
                   canvasWidth={canvasWidth}
                   canvasHeight={canvasHeight}
                 />
+
                 <BleedOverlay
                   canvasWidth={canvasWidth}
                   canvasHeight={canvasHeight}
-                  bleedPx={Math.round(bleedMm * MM_TO_PX)}
-                  marginPx={Math.round(marginMm * MM_TO_PX)}
+                  bleedPx={Math.round(
+                    bleedMm * MM_TO_PX,
+                  )}
+                  marginPx={Math.round(
+                    marginMm * MM_TO_PX,
+                  )}
                   showBleed={showBleed}
                   showMargin={showMargin}
                   showCropMarks={showCropMarks}
@@ -250,25 +374,41 @@ export function EditorShell({
           </div>
 
           {/* Right inspector — context-aware */}
-          <div className="hidden min-h-0 w-[300px] shrink-0 overflow-hidden border-l border-white/5 bg-zinc-950 lg:flex lg:flex-col">
+          <div
+            className={`hidden min-h-0 w-[300px] shrink-0 overflow-hidden border-l border-white/5 bg-zinc-950 lg:flex lg:flex-col ${
+              focusMode ? "lg:hidden" : ""
+            }`}
+          >
             <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-4 py-2.5">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
                 Inspector
               </span>
-              <button
-                type="button"
-                onClick={() => setCommandOpen(true)}
-                className="flex items-center gap-1.5 rounded-md border border-white/8 bg-white/3 px-2 py-1 text-[10px] text-zinc-500 transition hover:bg-white/6 hover:text-zinc-300"
-                title="Abrir command menu (⌘K)"
-              >
-                <span>⌘K</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCommandOpen(true)
+                  }
+                  className="flex items-center gap-1.5 rounded-md border border-white/8 bg-white/3 px-2 py-1 text-[10px] text-zinc-500 transition hover:bg-white/6 hover:text-zinc-300"
+                  title="Abrir command menu (⌘K)"
+                >
+                  <span>⌘K</span>
+                </button>
+
+                <FocusModeButton />
+              </div>
             </div>
+
             <div className="min-h-0 flex-1 overflow-y-auto">
               <ContextInspector getCanvas={getCanvas} />
             </div>
           </div>
         </div>
+
+        <FloatingToolbar getCanvas={getCanvas} />
+
+        <FocusModeOverlay />
       </div>
     </EditorPersistenceProvider>
   );
