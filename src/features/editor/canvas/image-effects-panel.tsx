@@ -5,10 +5,9 @@ import { useEditorStore } from "../store/editor-store";
 import { isImageElement } from "@/entities/editor/element-guards";
 import type { ImageElement, BlendMode, ImageShadow } from "@/entities/editor/document-schema";
 import type { ImageEffectsState } from "@/entities/editor/image-effects";
-import {
-  createDefaultImageEffects,
-  IMAGE_PRESETS,
-} from "@/entities/editor/image-effects";
+import { createDefaultImageEffects, IMAGE_PRESETS } from "@/entities/editor/image-effects";
+import { Section, PremiumSlider, PanelDivider } from "@/lib/design-system/primitives";
+import { border, surface, motion, radius, typography } from "@/lib/design-system/tokens";
 
 type EffectKey = keyof Omit<ImageEffectsState, "version">;
 
@@ -36,99 +35,20 @@ const PRESET_CATEGORIES = [
   { id: "vintage", label: "Vintage" },
 ] as const;
 
-function EffectSlider({
-  label,
-  effectKey,
-  value,
-  min,
-  max,
-  step = 1,
-  defaultValue,
-  onCommit,
-}: {
-  label: string;
-  effectKey: EffectKey;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  defaultValue: number;
-  onCommit: (key: EffectKey, value: number) => void;
-}) {
-  const isModified = Math.abs(value - defaultValue) > 0.01;
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-zinc-400">{label}</span>
-        <div className="flex items-center gap-1.5">
-          {isModified && (
-            <button
-              type="button"
-              onClick={() => onCommit(effectKey, defaultValue)}
-              className="text-[9px] text-zinc-600 hover:text-indigo-400"
-            >
-              reset
-            </button>
-          )}
-          <span className="w-8 text-right font-mono text-[10px] text-zinc-400">
-            {Math.round(value * 10) / 10}
-          </span>
-        </div>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onCommit(effectKey, parseFloat(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
-      />
-    </div>
-  );
-}
+const TABS = [
+  { id: "presets", label: "Presets" },
+  { id: "adjust", label: "Ajustar" },
+  { id: "blend", label: "Blend" },
+  { id: "shadow", label: "Sombra" },
+] as const;
 
-function ShadowSlider({
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-zinc-400">{label}</span>
-        <span className="font-mono text-[10px] text-zinc-400">
-          {Math.round(value)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-violet-500"
-      />
-    </div>
-  );
-}
+type TabId = (typeof TABS)[number]["id"];
 
 export function ImageEffectsPanel() {
   const present = useEditorStore((s) => s.present);
   const selectedIds = useEditorStore((s) => s.selectedIds);
   const [presetCategory, setPresetCategory] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"presets" | "adjust" | "blend" | "shadow">("presets");
+  const [activeTab, setActiveTab] = useState<TabId>("presets");
 
   const selectedImage = useMemo(() => {
     if (selectedIds.length !== 1) return null;
@@ -184,10 +104,9 @@ export function ImageEffectsPanel() {
   const applyPreset = useCallback(
     (preset: (typeof IMAGE_PRESETS)[number]) => {
       if (!selectedImage) return;
-      const defaults = createDefaultImageEffects();
       useEditorStore.getState().updateElement(
         selectedImage.id,
-        { effects: { ...defaults, ...preset.effects } } as Partial<ImageElement>,
+        { effects: { ...createDefaultImageEffects(), ...preset.effects } } as Partial<ImageElement>,
         { recordHistory: true },
       );
     },
@@ -207,18 +126,10 @@ export function ImageEffectsPanel() {
     );
   }, [selectedImage]);
 
-  if (!selectedImage) {
-    return (
-      <div className="p-4">
-        <p className="text-xs text-zinc-600">
-          Seleccioná una imagen para aplicar efectos.
-        </p>
-      </div>
-    );
-  }
+  if (!selectedImage) return null;
 
   const effects = selectedImage.effects as ImageEffectsState;
-  const safeEffects = {
+  const safe = {
     brightness: effects?.brightness ?? 0,
     contrast: effects?.contrast ?? 0,
     saturation: effects?.saturation ?? 0,
@@ -240,174 +151,182 @@ export function ImageEffectsPanel() {
   };
 
   const currentBlend = selectedImage.blendMode ?? "normal";
-
-  const filteredPresets =
-    presetCategory === "all"
-      ? IMAGE_PRESETS
-      : IMAGE_PRESETS.filter((p) => p.category === presetCategory);
+  const filteredPresets = presetCategory === "all"
+    ? IMAGE_PRESETS
+    : IMAGE_PRESETS.filter((p) => p.category === presetCategory);
 
   return (
     <div className="flex flex-col">
+
       {/* Tabs */}
-      <div className="flex border-b border-zinc-800">
-        {(
-          [
-            { id: "presets", label: "Presets" },
-            { id: "adjust", label: "Ajustar" },
-            { id: "blend", label: "Blend" },
-            { id: "shadow", label: "Sombra" },
-          ] as const
-        ).map((tab) => (
+      <div
+        className="flex shrink-0"
+        style={{ borderBottom: border.subtle }}
+      >
+        {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2 text-[10px] font-semibold uppercase tracking-wide transition ${
-              activeTab === tab.id
-                ? "border-b-2 border-indigo-500 text-indigo-300"
-                : "text-zinc-600 hover:text-zinc-400"
-            }`}
+            className="flex-1 py-2"
+            style={{
+              fontSize: typography.label.xs.size,
+              fontWeight: typography.label.xs.weight,
+              letterSpacing: typography.label.xs.tracking,
+              textTransform: "uppercase",
+              color:
+                activeTab === tab.id
+                  ? "rgba(99,102,241,0.9)"
+                  : "rgba(255,255,255,0.2)",
+              borderBottom:
+                activeTab === tab.id
+                  ? "1.5px solid rgba(99,102,241,0.7)"
+                  : "1.5px solid transparent",
+              transition: `all ${motion.duration.fast}`,
+            }}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Reset global */}
-      <div className="flex justify-end px-3 pt-2">
+      {/* Reset */}
+      <div className="flex justify-end px-3 pt-1.5">
         <button
           type="button"
           onClick={resetAll}
-          className="text-[9px] text-zinc-600 hover:text-indigo-400"
+          style={{
+            fontSize: "9px",
+            color: "rgba(255,255,255,0.15)",
+            transition: `color ${motion.duration.fast}`,
+          }}
+          className="hover:text-indigo-400"
         >
-          Resetear todo
+          resetear todo
         </button>
       </div>
 
-      {/* ── Tab: Presets ──────────────────────────────────── */}
+      {/* ── Presets ───────────────────────────────────────── */}
       {activeTab === "presets" && (
-        <div className="p-3">
-          {/* Categorías */}
-          <div className="mb-2 flex gap-1 overflow-x-auto scrollbar-none">
+        <Section label="Filtros">
+          <div className="mb-2 flex gap-1 overflow-x-auto">
             {PRESET_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
                 onClick={() => setPresetCategory(cat.id)}
-                className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-medium transition ${
-                  presetCategory === cat.id
-                    ? "bg-zinc-700 text-white"
-                    : "text-zinc-600 hover:text-zinc-300"
-                }`}
+                style={{
+                  flexShrink: 0,
+                  padding: "3px 8px",
+                  borderRadius: radius.sm,
+                  fontSize: "10px",
+                  fontWeight: "500",
+                  transition: `all ${motion.duration.fast}`,
+                  background:
+                    presetCategory === cat.id
+                      ? "rgba(255,255,255,0.08)"
+                      : "transparent",
+                  color:
+                    presetCategory === cat.id
+                      ? "rgba(255,255,255,0.7)"
+                      : "rgba(255,255,255,0.2)",
+                }}
               >
                 {cat.label}
               </button>
             ))}
           </div>
-
           <div className="grid grid-cols-3 gap-1.5">
             {filteredPresets.map((preset) => (
               <button
                 key={preset.id}
                 type="button"
                 onClick={() => applyPreset(preset)}
-                className="rounded-lg border border-zinc-800 bg-zinc-800/40 py-2.5 text-[10px] font-medium text-zinc-400 transition hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-200"
+                style={{
+                  padding: "8px 4px",
+                  borderRadius: radius.md,
+                  fontSize: "10px",
+                  fontWeight: "500",
+                  background: surface.glass,
+                  border: border.subtle,
+                  color: "rgba(255,255,255,0.35)",
+                  transition: `all ${motion.duration.fast}`,
+                }}
+                className="hover:border-white/15 hover:text-white/60"
               >
                 {preset.label}
               </button>
             ))}
           </div>
-        </div>
+        </Section>
       )}
 
-      {/* ── Tab: Ajustar ──────────────────────────────────── */}
+      {/* ── Ajustar ───────────────────────────────────────── */}
       {activeTab === "adjust" && (
-        <div className="flex flex-col divide-y divide-zinc-800/60">
-          <div className="flex flex-col gap-3 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-              Luz y color
-            </p>
-            <EffectSlider label="Brillo" effectKey="brightness"
-              value={safeEffects.brightness} min={-100} max={100}
-              defaultValue={0} onCommit={commitEffect} />
-            <EffectSlider label="Contraste" effectKey="contrast"
-              value={safeEffects.contrast} min={-100} max={100}
-              defaultValue={0} onCommit={commitEffect} />
-            <EffectSlider label="Saturación" effectKey="saturation"
-              value={safeEffects.saturation} min={-100} max={100}
-              defaultValue={0} onCommit={commitEffect} />
-            <EffectSlider label="Tono" effectKey="hueRotation"
-              value={safeEffects.hueRotation} min={0} max={360}
-              defaultValue={0} onCommit={commitEffect} />
-          </div>
-
-          <div className="flex flex-col gap-3 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-              Filtros
-            </p>
-            <EffectSlider label="Escala de grises" effectKey="grayscale"
-              value={safeEffects.grayscale} min={0} max={100}
-              defaultValue={0} onCommit={commitEffect} />
-            <EffectSlider label="Sépia" effectKey="sepia"
-              value={safeEffects.sepia} min={0} max={100}
-              defaultValue={0} onCommit={commitEffect} />
-          </div>
-
-          <div className="flex flex-col gap-3 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-              Efectos
-            </p>
-            <EffectSlider label="Desenfoque" effectKey="blur"
-              value={safeEffects.blur} min={0} max={40} step={0.5}
-              defaultValue={0} onCommit={commitEffect} />
-            <EffectSlider label="Pixelado" effectKey="pixelate"
-              value={safeEffects.pixelate} min={1} max={50}
-              defaultValue={1} onCommit={commitEffect} />
-            <EffectSlider label="Grain" effectKey="noise"
-              value={safeEffects.noise} min={0} max={100}
-              defaultValue={0} onCommit={commitEffect} />
-          </div>
-        </div>
+        <>
+          <Section label="Luz y color">
+            <PremiumSlider label="Brillo" value={safe.brightness} min={-100} max={100} defaultValue={0} onChange={(v) => commitEffect("brightness", v)} />
+            <PremiumSlider label="Contraste" value={safe.contrast} min={-100} max={100} defaultValue={0} onChange={(v) => commitEffect("contrast", v)} />
+            <PremiumSlider label="Saturación" value={safe.saturation} min={-100} max={100} defaultValue={0} onChange={(v) => commitEffect("saturation", v)} />
+            <PremiumSlider label="Tono" value={safe.hueRotation} min={0} max={360} defaultValue={0} onChange={(v) => commitEffect("hueRotation", v)} />
+          </Section>
+          <Section label="Filtros">
+            <PremiumSlider label="Grises" value={safe.grayscale} min={0} max={100} defaultValue={0} onChange={(v) => commitEffect("grayscale", v)} />
+            <PremiumSlider label="Sépia" value={safe.sepia} min={0} max={100} defaultValue={0} onChange={(v) => commitEffect("sepia", v)} />
+          </Section>
+          <Section label="Efectos">
+            <PremiumSlider label="Blur" value={safe.blur} min={0} max={40} step={0.5} defaultValue={0} onChange={(v) => commitEffect("blur", v)} />
+            <PremiumSlider label="Pixelado" value={safe.pixelate} min={1} max={50} defaultValue={1} onChange={(v) => commitEffect("pixelate", v)} />
+            <PremiumSlider label="Grain" value={safe.noise} min={0} max={100} defaultValue={0} onChange={(v) => commitEffect("noise", v)} />
+          </Section>
+        </>
       )}
 
-      {/* ── Tab: Blend ────────────────────────────────────── */}
+      {/* ── Blend ─────────────────────────────────────────── */}
       {activeTab === "blend" && (
-        <div className="p-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-            Modo de mezcla
-          </p>
-          <div className="flex flex-col gap-1">
+        <Section label="Modo de mezcla">
+          <div className="flex flex-col gap-0.5">
             {BLEND_MODES.map((mode) => (
               <button
                 key={mode.value}
                 type="button"
                 onClick={() => commitBlendMode(mode.value)}
-                className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
-                  currentBlend === mode.value
-                    ? "bg-indigo-600/20 text-indigo-300 ring-1 ring-indigo-500/40"
-                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-                }`}
+                className="flex items-center justify-between text-left"
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: radius.md,
+                  fontSize: "11px",
+                  transition: `all ${motion.duration.fast}`,
+                  background:
+                    currentBlend === mode.value
+                      ? "rgba(99,102,241,0.12)"
+                      : "transparent",
+                  color:
+                    currentBlend === mode.value
+                      ? "rgba(99,102,241,0.9)"
+                      : "rgba(255,255,255,0.3)",
+                }}
               >
                 {mode.label}
                 {currentBlend === mode.value && (
-                  <span className="text-[9px] text-indigo-400">activo</span>
+                  <span style={{ fontSize: "9px", color: "rgba(99,102,241,0.6)" }}>
+                    ●
+                  </span>
                 )}
               </button>
             ))}
           </div>
-        </div>
+        </Section>
       )}
 
-      {/* ── Tab: Sombra ───────────────────────────────────── */}
+      {/* ── Sombra ────────────────────────────────────────── */}
       {activeTab === "shadow" && (
-        <div className="flex flex-col gap-3 p-3">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-              Sombra
-            </p>
+        <Section
+          label="Sombra"
+          action={
             <label className="flex cursor-pointer items-center gap-2">
-              <span className="text-[10px] text-zinc-500">
-                {shadow.enabled ? "Activa" : "Inactiva"}
+              <span style={{ fontSize: "9px", color: shadow.enabled ? "rgba(99,102,241,0.8)" : "rgba(255,255,255,0.2)" }}>
+                {shadow.enabled ? "activa" : "inactiva"}
               </span>
               <input
                 type="checkbox"
@@ -416,54 +335,36 @@ export function ImageEffectsPanel() {
                 className="accent-indigo-500"
               />
             </label>
-          </div>
-
+          }
+        >
           {shadow.enabled && (
             <>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-zinc-400">Color</span>
+              <div className="mb-2 flex items-center gap-2">
                 <input
                   type="color"
                   value={shadow.color}
                   onChange={(e) => commitShadow({ color: e.target.value })}
-                  className="h-7 w-10 cursor-pointer rounded border border-zinc-700 bg-zinc-800 p-0.5"
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: radius.sm,
+                    border: border.soft,
+                    background: "transparent",
+                    padding: "2px",
+                    cursor: "pointer",
+                  }}
                 />
-                <span className="font-mono text-[10px] text-zinc-500">
+                <span style={{ fontSize: "10px", fontFamily: "ui-monospace", color: "rgba(255,255,255,0.25)" }}>
                   {shadow.color}
                 </span>
               </div>
-
-              <ShadowSlider
-                label="Desenfoque"
-                value={shadow.blur}
-                min={0}
-                max={60}
-                onChange={(v) => commitShadow({ blur: v })}
-              />
-              <ShadowSlider
-                label="Offset X"
-                value={shadow.offsetX}
-                min={-50}
-                max={50}
-                onChange={(v) => commitShadow({ offsetX: v })}
-              />
-              <ShadowSlider
-                label="Offset Y"
-                value={shadow.offsetY}
-                min={-50}
-                max={50}
-                onChange={(v) => commitShadow({ offsetY: v })}
-              />
-              <ShadowSlider
-                label="Opacidad"
-                value={Math.round(shadow.opacity * 100)}
-                min={0}
-                max={100}
-                onChange={(v) => commitShadow({ opacity: v / 100 })}
-              />
+              <PremiumSlider label="Blur" value={shadow.blur} min={0} max={60} defaultValue={10} onChange={(v) => commitShadow({ blur: v })} />
+              <PremiumSlider label="Offset X" value={shadow.offsetX} min={-50} max={50} defaultValue={5} onChange={(v) => commitShadow({ offsetX: v })} />
+              <PremiumSlider label="Offset Y" value={shadow.offsetY} min={-50} max={50} defaultValue={5} onChange={(v) => commitShadow({ offsetY: v })} />
+              <PremiumSlider label="Opacidad" value={Math.round(shadow.opacity * 100)} min={0} max={100} unit="%" defaultValue={50} onChange={(v) => commitShadow({ opacity: v / 100 })} />
             </>
           )}
-        </div>
+        </Section>
       )}
     </div>
   );

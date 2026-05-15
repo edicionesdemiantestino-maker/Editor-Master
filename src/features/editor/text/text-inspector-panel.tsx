@@ -1,101 +1,40 @@
 "use client";
 
 import { startTransition, useEffect, useMemo, useState } from "react";
-
 import type { TextElement } from "@/entities/editor/document-schema";
 import { isTextElement } from "@/entities/editor/element-guards";
 import { pickTextTypography } from "@/entities/editor/text-typography";
-
 import { useBrandKit } from "../brand/use-brand-kit";
 import { ensureFontLoaded } from "../fonts/font-manager";
 import { useEditorStore } from "../store/editor-store";
 import { FontPicker } from "./font-picker";
+import { Section, PremiumSlider, PanelDivider } from "@/lib/design-system/primitives";
+import { border, surface, motion, radius, typography } from "@/lib/design-system/tokens";
 
 const FONT_WEIGHTS = [
   { value: 100, label: "Thin" },
-  { value: 200, label: "ExtraLight" },
   { value: 300, label: "Light" },
   { value: 400, label: "Regular" },
   { value: 500, label: "Medium" },
-  { value: 600, label: "SemiBold" },
+  { value: 600, label: "Semi" },
   { value: 700, label: "Bold" },
-  { value: 800, label: "ExtraBold" },
   { value: 900, label: "Black" },
 ] as const;
 
 const FONT_PAIRS = [
   { heading: "Playfair Display", body: "Inter", label: "Editorial" },
-  { heading: "Montserrat", body: "Lora", label: "Clásico" },
   { heading: "DM Serif Display", body: "DM Sans", label: "Moderno" },
   { heading: "Fraunces", body: "Manrope", label: "Artístico" },
   { heading: "Syne", body: "Plus Jakarta Sans", label: "Startup" },
   { heading: "Cormorant Garamond", body: "Raleway", label: "Lujo" },
 ] as const;
 
-function SliderControl({
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  unit = "",
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  unit?: string;
-  onChange: (v: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-
-  useEffect(() => {
-    setDraft(String(Math.round(value * 100) / 100));
-  }, [value]);
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-zinc-500">{label}</span>
-        <div className="flex items-center gap-1">
-          <input
-            type="number"
-            value={draft}
-            min={min}
-            max={max}
-            step={step}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={() => {
-              const n = parseFloat(draft);
-              if (!Number.isFinite(n)) {
-                setDraft(String(value));
-                return;
-              }
-              const clamped = Math.min(max, Math.max(min, n));
-              setDraft(String(clamped));
-              onChange(clamped);
-            }}
-            className="w-14 rounded border border-zinc-700 bg-zinc-800/60 px-1.5 py-0.5 text-right text-[11px] text-zinc-200 focus:border-indigo-500 focus:outline-none"
-          />
-          {unit && (
-            <span className="text-[10px] text-zinc-600">{unit}</span>
-          )}
-        </div>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
-      />
-    </div>
-  );
-}
+const ALIGN_OPTIONS = [
+  { value: "left" as const, icon: "▤" },
+  { value: "center" as const, icon: "▥" },
+  { value: "right" as const, icon: "▦" },
+  { value: "justify" as const, icon: "▧" },
+] as const;
 
 export function TextInspectorPanel() {
   const present = useEditorStore((s) => s.present);
@@ -114,7 +53,6 @@ export function TextInspectorPanel() {
   }, [present.canvas.elements, selectedIds, historyRevision]);
 
   const [draftText, setDraftText] = useState("");
-
   useEffect(() => {
     if (!selectedText) return;
     startTransition(() => setDraftText(selectedText.text));
@@ -122,147 +60,171 @@ export function TextInspectorPanel() {
 
   if (!selectedText) {
     return (
-      <section className="p-4">
-        <p className="text-xs text-zinc-600">
-          Seleccioná un bloque de texto para editar tipografía.
+      <div className="p-4">
+        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.2)" }}>
+          Seleccioná un bloque de texto para editar.
         </p>
-      </section>
+      </div>
     );
   }
 
   const id = selectedText.id;
   const typo = pickTextTypography(selectedText);
 
-  const commit = (patch: Partial<TextElement>) => {
+  const commit = (patch: Partial<TextElement>) =>
     useEditorStore.getState().updateElement(id, patch, { recordHistory: true });
-  };
 
   const onFontChange = async (family: string) => {
     try {
       await ensureFontLoaded(family, [400, 700]);
       commit({ fontSource: "google", fontFamily: family });
-    } catch (e) {
-      console.error("FONT LOAD ERROR", e);
-    }
+    } catch {}
   };
 
   return (
-    <section className="flex flex-col gap-0 divide-y divide-zinc-800/60">
+    <div className="flex flex-col">
 
       {/* Contenido */}
-      <div className="p-3">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-          Contenido
-        </p>
+      <Section label="Contenido">
         <textarea
-          className="min-h-[3.5rem] w-full resize-none rounded-lg border border-zinc-700 bg-zinc-800/50 px-2.5 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-indigo-500 focus:outline-none"
           value={draftText}
           onChange={(e) => setDraftText(e.target.value)}
           onBlur={() => {
-            if (draftText !== selectedText.text) {
-              commit({ text: draftText });
-            }
+            if (draftText !== selectedText.text) commit({ text: draftText });
           }}
+          rows={3}
           placeholder="Texto del elemento"
+          className="w-full resize-none focus:outline-none"
+          style={{
+            background: surface.glass,
+            border: border.soft,
+            borderRadius: radius.md,
+            padding: "8px 10px",
+            fontSize: "12px",
+            color: "rgba(255,255,255,0.7)",
+            lineHeight: "1.5",
+          }}
         />
-      </div>
+      </Section>
 
-      {/* Fuente */}
-      <div className="p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-          Tipografía
-        </p>
+      {/* Tipografía */}
+      <Section label="Tipografía">
         <FontPicker
           value={typo.fontFamily}
           onChange={(family) => void onFontChange(family)}
         />
 
         {/* Peso */}
-        <div className="mt-2.5">
-          <p className="mb-1.5 text-[10px] text-zinc-600">Peso</p>
-          <div className="flex flex-wrap gap-1">
-            {FONT_WEIGHTS.map((w) => (
-              <button
-                key={w.value}
-                type="button"
-                onClick={() => commit({ fontWeight: w.value })}
-                className={`rounded-md px-2 py-1 text-[10px] transition ${
+        <div className="mt-2.5 flex flex-wrap gap-1">
+          {FONT_WEIGHTS.map((w) => (
+            <button
+              key={w.value}
+              type="button"
+              onClick={() => commit({ fontWeight: w.value })}
+              style={{
+                padding: "3px 8px",
+                borderRadius: radius.sm,
+                fontSize: "10px",
+                fontWeight: "500",
+                transition: `all ${motion.duration.fast}`,
+                background:
                   Number(typo.fontWeight) === w.value
-                    ? "bg-indigo-600 text-white"
-                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-                }`}
-              >
-                {w.label}
-              </button>
-            ))}
-          </div>
+                    ? "rgba(99,102,241,0.25)"
+                    : surface.glass,
+                color:
+                  Number(typo.fontWeight) === w.value
+                    ? "rgba(99,102,241,0.9)"
+                    : "rgba(255,255,255,0.3)",
+                border:
+                  Number(typo.fontWeight) === w.value
+                    ? "0.5px solid rgba(99,102,241,0.4)"
+                    : border.subtle,
+              }}
+            >
+              {w.label}
+            </button>
+          ))}
         </div>
-      </div>
+      </Section>
 
-      {/* Tamaño y espaciado */}
-      <div className="flex flex-col gap-3 p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-          Escala y espaciado
-        </p>
-        <SliderControl
+      {/* Escala */}
+      <Section label="Escala y espaciado">
+        <PremiumSlider
           label="Tamaño"
           value={typo.fontSize}
           min={6}
           max={400}
           unit="px"
+          defaultValue={48}
           onChange={(v) => commit({ fontSize: v })}
         />
-        <SliderControl
-          label="Altura de línea"
+        <PremiumSlider
+          label="Línea"
           value={typo.lineHeight}
           min={0.5}
           max={4}
           step={0.05}
+          defaultValue={1.2}
           onChange={(v) => commit({ lineHeight: v })}
         />
-        <SliderControl
-          label="Espaciado letras"
+        <PremiumSlider
+          label="Tracking"
           value={typo.letterSpacing}
           min={-10}
           max={40}
           step={0.5}
           unit="px"
+          defaultValue={0}
           onChange={(v) => commit({ letterSpacing: v })}
         />
         {selectedText.width !== undefined && (
-          <SliderControl
-            label="Ancho máximo"
+          <PremiumSlider
+            label="Ancho"
             value={selectedText.width ?? 400}
             min={20}
             max={present.canvas.width}
             unit="px"
+            defaultValue={400}
             onChange={(v) => commit({ width: v })}
           />
         )}
-      </div>
+      </Section>
 
       {/* Color */}
-      <div className="p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-          Color
-        </p>
+      <Section label="Color">
         <div className="flex items-center gap-2">
           <input
             type="color"
-            className="h-8 w-10 cursor-pointer rounded border border-zinc-700 bg-zinc-800 p-0.5"
             value={normalizeHex(typo.fill)}
             onChange={(e) => commit({ fill: e.target.value })}
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: radius.md,
+              border: border.soft,
+              background: "transparent",
+              cursor: "pointer",
+              padding: "2px",
+            }}
           />
           <input
             type="text"
             value={normalizeHex(typo.fill).toUpperCase()}
             onChange={(e) => {
-              if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
+              if (/^#[0-9a-fA-F]{6}$/.test(e.target.value))
                 commit({ fill: e.target.value });
-              }
             }}
-            className="flex-1 rounded border border-zinc-700 bg-zinc-800/60 px-2 py-1.5 font-mono text-xs text-zinc-200 focus:border-indigo-500 focus:outline-none"
             maxLength={7}
+            className="flex-1 focus:outline-none"
+            style={{
+              background: surface.glass,
+              border: border.soft,
+              borderRadius: radius.md,
+              padding: "6px 10px",
+              fontFamily: "ui-monospace, monospace",
+              fontSize: "11px",
+              color: "rgba(255,255,255,0.5)",
+            }}
           />
         </div>
         {kit?.brand_colors?.length ? (
@@ -271,102 +233,127 @@ export function TextInspectorPanel() {
               <button
                 key={c.id}
                 type="button"
-                className="h-6 w-6 rounded-md border border-zinc-700 transition hover:scale-110"
-                style={{ background: c.hex }}
                 onClick={() => commit({ fill: c.hex })}
                 title={c.hex}
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  borderRadius: radius.sm,
+                  background: c.hex,
+                  border: border.subtle,
+                  transition: `transform ${motion.duration.fast}`,
+                }}
+                className="hover:scale-110"
               />
             ))}
           </div>
         ) : null}
-      </div>
+      </Section>
 
       {/* Alineación */}
-      <div className="p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-          Alineación
-        </p>
+      <Section label="Alineación">
         <div className="flex gap-1">
-          {(
-            [
-              { value: "left" as const, icon: "▤", label: "Izquierda" },
-              { value: "center" as const, icon: "▥", label: "Centro" },
-              { value: "right" as const, icon: "▦", label: "Derecha" },
-              { value: "justify" as const, icon: "▧", label: "Justificado" },
-            ] as const
-          ).map((opt) => (
+          {ALIGN_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              title={opt.label}
               onClick={() => commit({ textAlign: opt.value })}
-              className={`flex-1 rounded-lg py-2 text-sm transition ${
-                typo.textAlign === opt.value
-                  ? "bg-indigo-600/30 text-indigo-300 ring-1 ring-indigo-500/50"
-                  : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300"
-              }`}
+              style={{
+                flex: 1,
+                padding: "6px",
+                borderRadius: radius.md,
+                fontSize: "14px",
+                transition: `all ${motion.duration.fast}`,
+                background:
+                  typo.textAlign === opt.value
+                    ? "rgba(99,102,241,0.2)"
+                    : surface.glass,
+                color:
+                  typo.textAlign === opt.value
+                    ? "rgba(99,102,241,0.9)"
+                    : "rgba(255,255,255,0.25)",
+                border:
+                  typo.textAlign === opt.value
+                    ? "0.5px solid rgba(99,102,241,0.35)"
+                    : border.subtle,
+              }}
             >
               {opt.icon}
             </button>
           ))}
         </div>
-      </div>
+      </Section>
 
       {/* Opacidad */}
-      <div className="p-3">
-        <SliderControl
+      <Section label="Opacidad">
+        <PremiumSlider
           label="Opacidad"
           value={Math.round((selectedText.opacity ?? 1) * 100)}
           min={0}
           max={100}
           unit="%"
+          defaultValue={100}
           onChange={(v) => commit({ opacity: v / 100 } as Partial<TextElement>)}
         />
-      </div>
+      </Section>
 
-      {/* Font pairing */}
-      <div className="p-3">
-        <button
-          type="button"
-          onClick={() => setShowPairs((v) => !v)}
-          className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-zinc-600 hover:text-zinc-400"
-        >
-          Combinaciones recomendadas
-          <span>{showPairs ? "▲" : "▼"}</span>
-        </button>
-
-        {showPairs && (
-          <div className="mt-2 flex flex-col gap-1.5">
-            {FONT_PAIRS.map((pair) => (
-              <button
-                key={pair.label}
-                type="button"
-                onClick={() => void onFontChange(pair.heading)}
-                className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/40 px-3 py-2 text-left transition hover:border-zinc-600 hover:bg-zinc-800"
-              >
-                <div>
-                  <div
-                    className="text-sm text-zinc-100"
-                    style={{ fontFamily: pair.heading }}
-                  >
-                    {pair.heading}
-                  </div>
-                  <div
-                    className="text-[10px] text-zinc-500"
-                    style={{ fontFamily: pair.body }}
-                  >
-                    + {pair.body}
-                  </div>
+      {/* Combinaciones */}
+      <Section
+        label="Combinaciones"
+        collapsible
+        defaultOpen={false}
+      >
+        <div className="flex flex-col gap-1.5">
+          {FONT_PAIRS.map((pair) => (
+            <button
+              key={pair.label}
+              type="button"
+              onClick={() => void onFontChange(pair.heading)}
+              className="flex items-center justify-between text-left"
+              style={{
+                padding: "8px 10px",
+                borderRadius: radius.md,
+                background: surface.glass,
+                border: border.subtle,
+                transition: `all ${motion.duration.fast}`,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontFamily: pair.heading,
+                    fontSize: "12px",
+                    color: "rgba(255,255,255,0.6)",
+                  }}
+                >
+                  {pair.heading}
                 </div>
-                <span className="rounded-md bg-zinc-700 px-1.5 py-0.5 text-[9px] text-zinc-400">
-                  {pair.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
+                <div
+                  style={{
+                    fontFamily: pair.body,
+                    fontSize: "10px",
+                    color: "rgba(255,255,255,0.25)",
+                  }}
+                >
+                  + {pair.body}
+                </div>
+              </div>
+              <span
+                style={{
+                  fontSize: "9px",
+                  padding: "2px 6px",
+                  borderRadius: radius.sm,
+                  background: "rgba(255,255,255,0.05)",
+                  color: "rgba(255,255,255,0.2)",
+                }}
+              >
+                {pair.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </Section>
+    </div>
   );
 }
 
